@@ -21,10 +21,10 @@ def define_regions(grid=3):
         for width in range(1, grid+1):
             for y in range(0, grid - height + 1):
                 for x in range(0, grid - width + 1):
-                    print(f"Adding region {x},{y},{width}x{height} to regions")
+                    # print(f"Adding region {x},{y},{width}x{height} to regions")
                     start_cell = x + y * grid
                     end_cell = start_cell + width - 1 + (height - 1) * grid
-                    print("Start/End :", start_cell, end_cell)
+                    # print("Start/End :", start_cell, end_cell)
                     regions.append((start_cell,end_cell))
     # add full size region
     return regions

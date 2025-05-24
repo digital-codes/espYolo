@@ -12,11 +12,11 @@ import layoutUtils as layout
 MODEL_PATH = "best_model_regions.keras"
 IMAGE_SIZE = 160
 OUTPUT_DIR = "verify"
-THRESHOLD = 0.35  # Prediction confidence threshold
+THRESHOLD = 0.25  # Prediction confidence threshold
 MAX_IMAGES = 50
 
 GRID = 3
-INPUT_PATH = "./output"
+INPUT_PATH = "./voc"
 IMAGE_SIZE = 160
 
 def load_dataset(image_dir, classes, cells, regions):

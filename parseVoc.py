@@ -119,7 +119,7 @@ def load_dataset(root_dir):
 def main():
     sources = load_dataset("./datasets/TUGraz")
     print(f"Total images: {len(sources)}")
-    outDir = "./output"
+    outDir = "./voc"
     if not os.path.exists(outDir):
         os.makedirs(outDir)
     else:

@@ -37,17 +37,25 @@ regions = layout.define_regions(GRID)
 
 checkpoint_cb = ModelCheckpoint(
     "best_model_regions.keras",              # recommended Keras format
-    monitor="val_loss",              # or "val_binary_accuracy"
+    monitor="val_f1",            # <- use F1 score now
+    mode="max",                  # <- maximize F1
     save_best_only=True,
     save_weights_only=False,
-    mode="min",                      # use "max" if tracking accuracy
     verbose=1
 )
 
-lr_cb = ReduceLROnPlateau(monitor="val_f1", factor=0.5, patience=3, min_lr=1e-6, verbose=1)
+lr_cb = ReduceLROnPlateau(
+    monitor='val_f1',
+    factor=0.5,
+    patience=5,
+    min_lr=1e-6,
+    mode='max',
+    verbose=1
+)
+
 
 stop_cb = tf.keras.callbacks.EarlyStopping(
-    monitor='val_loss', patience=5, restore_best_weights=True
+    monitor='val_f1', patience=20, mode='max', restore_best_weights=True
 )
 
 
@@ -183,13 +191,13 @@ def split_dataset(ds, train_size, val_size, test_size):
 
 
 def focal_loss(gamma=2.0, alpha=0.25):
-    def loss_fn(y_true, y_pred):
-        epsilon = 1e-8
-        y_pred = tf.clip_by_value(y_pred, epsilon, 1. - epsilon)
-        cross_entropy = -y_true * tf.math.log(y_pred) - (1 - y_true) * tf.math.log(1 - y_pred)
-        weight = alpha * y_true * tf.pow(1 - y_pred, gamma) + (1 - alpha) * (1 - y_true) * tf.pow(y_pred, gamma)
-        return tf.reduce_mean(weight * cross_entropy)
-    return loss_fn
+    def loss(y_true, y_pred):
+        y_pred = tf.clip_by_value(y_pred, 1e-8, 1.0 - 1e-8)
+        ce = -y_true * tf.math.log(y_pred) - (1 - y_true) * tf.math.log(1 - y_pred)
+        weight = alpha * y_true * tf.pow(1 - y_pred, gamma) + \
+                 (1 - alpha) * (1 - y_true) * tf.pow(y_pred, gamma)
+        return tf.reduce_mean(weight * ce)
+    return loss
 
 def sparse_f1_score(threshold=0.5):
     def f1(y_true, y_pred):
@@ -258,7 +266,7 @@ def main():
 
     model.compile(
         optimizer=optimizer,
-        loss='binary_crossentropy',
+        loss=focal_loss(), # 'binary_crossentropy',
         metrics=[sparse_f1_score(threshold=0.2)]  # use lower threshold if needed
         # metrics=[tf.keras.metrics.BinaryAccuracy()]
     )
