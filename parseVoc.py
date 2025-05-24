@@ -3,6 +3,7 @@ import os
 import re
 import numpy as np
 from PIL import Image
+import json
 
 import matplotlib
 matplotlib.use("Agg")  # Use Agg backend (no GUI window)
@@ -93,29 +94,50 @@ def load_dataset(root_dir):
 def main():
     sources = load_dataset("./datasets/TUGraz")
     print(f"Total images: {len(sources)}")
+    outDir = "./output"
+    if not os.path.exists(outDir):
+        os.makedirs(outDir)
+    print(f"Output directory: {outDir}")
+    
+
     for i, (name, img, (bboxes, labels)) in enumerate(sources):
-        if i >= 10:
-            break
-        fig, ax = plt.subplots(1, figsize=(8, 8))
-        ax.imshow(img)
-        for bbox, label in zip(bboxes, labels):
-            ymin, xmin, ymax, xmax = bbox
-            rect = patches.Rectangle((xmin, ymin),
-                                     (xmax - xmin),
-                                     (ymax - ymin),
-                                     linewidth=2, edgecolor='r', facecolor='none')
-            ax.add_patch(rect)
-            ax.text(xmin, ymin, class_names[label], color='white', fontsize=12)
-        plt.axis('off')
-        plt.savefig(f"output_{i}.png", bbox_inches='tight', pad_inches=0)
-        plt.close(fig)
-        print(f"Processed image {i + 1}, {name}")
-        print(f"Image shape: {img.shape}")
-        print(f"Bounding boxes: {bboxes}")
-        print(f"Labels: {labels}")
-        print("===" * 10)
-        print(f"\n") 
-        
+        if i < 10:
+            fig, ax = plt.subplots(1, figsize=(8, 8))
+            ax.imshow(img)
+            for bbox, label in zip(bboxes, labels):
+                ymin, xmin, ymax, xmax = bbox
+                rect = patches.Rectangle((xmin, ymin),
+                                        (xmax - xmin),
+                                        (ymax - ymin),
+                                        linewidth=2, edgecolor='r', facecolor='none')
+                ax.add_patch(rect)
+                ax.text(xmin, ymin, class_names[label], color='white', fontsize=12)
+            plt.axis('off')
+            plt.savefig(f"output_{i}.png", bbox_inches='tight', pad_inches=0)
+            plt.close(fig)
+            print(f"Processed image {i + 1}, {name}")
+            print(f"Image shape: {img.shape}")
+            print(f"Bounding boxes: {bboxes}")
+            print(f"Labels: {labels}")
+            print("===" * 10)
+            print(f"\n") 
+        # Save the image
+        img_save_path = os.path.join(outDir, name)
+        img = Image.fromarray((img * 255).astype(np.uint8))
+        img.save(img_save_path)
+        print(f"Saved image to {img_save_path}")
+        # Save the labels
+        label_save_path = os.path.join(outDir, f"{name.split('.')[0]}_labels.json")
+        with open(label_save_path, 'w') as f:
+            json.dump({"img":name, "bboxes": bboxes.tolist(), "labels": labels.tolist()}, f)
+        print(f"Saved labels to {label_save_path}")
+        print("=" * 40)
+
+    # Save the label names map
+    label_map_save_path = os.path.join(outDir, "label_map.json")
+    with open(label_map_save_path, 'w') as f:
+        json.dump(label_map, f)
+    print(f"Saved label map to {label_map_save_path}")
 
 if __name__ == '__main__':
     main()
