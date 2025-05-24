@@ -39,6 +39,19 @@ def parse_tugraz_annotation(txt_path, label_map, tugraz_root):
     img_name = os.path.basename(img_path)
     orig_width, orig_height = img.width, img.height
     img = Image.open(img_path).convert("RGB").resize((imgSize, imgSize))
+    
+    # 
+    # Center crop to square aspect ratio
+    #min_dim = min(img.width, img.height)
+    #left = (img.width - min_dim) // 2
+    #top = (img.height - min_dim) // 2
+    #right = left + min_dim
+    #bottom = top + min_dim
+    #img = img.crop((left, top, right, bottom))
+    # Resize to target size
+    # img = img.resize((imgSize, imgSize))
+
+    
 
     bboxes = []
     labels = []
@@ -62,10 +75,10 @@ def parse_tugraz_annotation(txt_path, label_map, tugraz_root):
                 ymin, ymax = ymin / orig_height, ymax / orig_height
                 bboxes.append(
                     [
-                        int(ymin * imgSize),
                         int(xmin * imgSize),
-                        int(ymax * imgSize),
+                        int(ymin * imgSize),
                         int(xmax * imgSize),
+                        int(ymax * imgSize),
                     ]
                 )
                 labels.append(label_map[current_label])
