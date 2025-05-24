@@ -192,7 +192,7 @@ def split_dataset(ds, train_size, val_size, test_size):
 
 def focal_loss(gamma=2.0, alpha=0.25):
     def loss(y_true, y_pred):
-        y_pred = tf.clip_by_value(y_pred, 1e-8, 1.0 - 1e-8)
+        y_pred = tf.clip_by_value(y_pred, 1e-7, 1.0 - 1e-7)
         ce = -y_true * tf.math.log(y_pred) - (1 - y_true) * tf.math.log(1 - y_pred)
         weight = alpha * y_true * tf.pow(1 - y_pred, gamma) + \
                  (1 - alpha) * (1 - y_true) * tf.pow(y_pred, gamma)
