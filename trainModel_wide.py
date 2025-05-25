@@ -36,8 +36,8 @@ regions = layout.define_regions(GRID)
 
 
 checkpoint_cb = ModelCheckpoint(
-    "best_model_regions_softmax.keras",              # recommended Keras format
-    monitor="val_sparse_categorical_accuracy",            # <- use F1 score now
+    "best_model_regions.keras",              # recommended Keras format
+    monitor="val_f1",            # <- use F1 score now
     mode="max",                  # <- maximize F1
     save_best_only=True,
     save_weights_only=False,
@@ -45,9 +45,9 @@ checkpoint_cb = ModelCheckpoint(
 )
 
 lr_cb = ReduceLROnPlateau(
-    monitor='val_sparse_categorical_accuracy',
+    monitor='val_f1',
     factor=0.5,
-    patience=20,
+    patience=5,
     min_lr=1e-6,
     mode='max',
     verbose=1
@@ -55,37 +55,34 @@ lr_cb = ReduceLROnPlateau(
 
 
 stop_cb = tf.keras.callbacks.EarlyStopping(
-    monitor='val_sparse_categorical_accuracy', patience=50, mode='max', restore_best_weights=True
+    monitor='val_f1', patience=20, mode='max', restore_best_weights=True
 )
 
 
 # --- TinyissimoYOLO-like Model ---
-def build_quadrant_model(input_shape, num_regions, num_classes):
-    inputs = tf.keras.Input(shape=input_shape)
+def build_quadrant_model(input_shape, output_dim):
 
+    inputs = tf.keras.Input(shape=input_shape)
     x = inputs
     # filterSizes = [16, 16, 32, 32, 64, 64, 128] # 128, 128]  # leave out 128, 128
     # filterSizes = [16, 32, 32, 64, 128 ] # 128, 128]  # leave out 128, 128
-    filterSizes = [16, 32, 64, 128 ] # 128, 128]  # leave out 128, 128
-    for f, filters in enumerate(filterSizes): 
+    filterSizes = [16, 16, 32, 64 ] # 128, 128]  # leave out 128, 128
+    for filters in filterSizes: 
         x = tf.keras.layers.Conv2D(filters, 3, padding='same', activation='relu')(x)
-        if f < len(filterSizes) - 1:
-            x = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2)(x)
-    # global average pooling
-    x = tf.keras.layers.GlobalAveragePooling2D()(x)
+        x = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2)(x)
 
-    x = tf.keras.layers.Dense(256, activation='relu')(x)
-    #x = tf.keras.layers.Dense(4 * filterSizes[-1], activation='relu')(x)
-    x = tf.keras.layers.Dropout(0.3)(x)
+    x = tf.keras.layers.Flatten()(x)
+    # dropout extra
+    x = tf.keras.layers.Dropout(0.3)(x)  # ✅ Dropout before output layer
+    x = tf.keras.layers.Dense(filterSizes[-1], activation='relu')(x)
 
-    total_classes = num_classes + 1  # +1 for background
-    x = tf.keras.layers.Dense(num_regions * total_classes)(x)
-    x = tf.keras.layers.Reshape((num_regions, total_classes))(x)
-    outputs = tf.keras.layers.Softmax(axis=-1)(x)
 
-    model = tf.keras.models.Model(inputs, outputs)
-    return model
+    #x = tf.keras.layers.Dense(filter_pairs[-1][-1], activation='relu')(x)
+    # outputs = tf.keras.layers.Dense(output_dim, activation='sigmoid',kernel_regularizer=tf.keras.regularizers.l2(1e-4))(x)
+    outputs = tf.keras.layers.Dense(output_dim, activation='sigmoid')(x)
 
+
+    return tf.keras.Model(inputs, outputs)
 
 
 def load_dataset(image_dir, classes, cells, regions):
@@ -118,8 +115,6 @@ def load_dataset(image_dir, classes, cells, regions):
             else:
                 labelVector = layout.create_label_vector(cells, regions, bboxes, labels, len(classes.keys()))
                 
-            # convert to softmwax labels
-            labelVector = layout.convert_to_softmax_labels(labelVector, len(classes.keys()), len(regions))
 
             yield image, labelVector # (bboxes, labels)
                 
@@ -128,7 +123,7 @@ def load_dataset(image_dir, classes, cells, regions):
         generator,
         output_signature=(
             tf.TensorSpec(shape=(IMAGE_SIZE, IMAGE_SIZE, 3), dtype=tf.float32),
-            tf.TensorSpec(shape=(len(regions)), dtype=tf.float32)
+            tf.TensorSpec(shape=(len(regions)*len(classes.keys())), dtype=tf.float32)
         )
     )
     return ds
@@ -208,12 +203,10 @@ def main():
             print("Exiting...")
 
     input_shape = (IMAGE_SIZE, IMAGE_SIZE, 3)
-    output_dim = len(regions) #  * len(list(classes.keys())) 
+    output_dim = len(regions) * len(list(classes.keys())) 
     print(f"Input shape: {input_shape}, Output dimension: {output_dim}")
 
-    model = build_quadrant_model(input_shape = input_shape, 
-                                 num_regions = len(regions), num_classes=len(classes.keys()))
-
+    model = build_quadrant_model(input_shape = input_shape, output_dim = output_dim)
 
     # model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
     # Start with 1e-3 (default), go higher or lower based on behavior
@@ -225,8 +218,9 @@ def main():
 
     model.compile(
         optimizer=optimizer,
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
-        metrics=['sparse_categorical_accuracy']
+        loss=focal_loss(), # 'binary_crossentropy',
+        metrics=[sparse_f1_score(threshold=0.2)]  # use lower threshold if needed
+        # metrics=[tf.keras.metrics.BinaryAccuracy()]
     )
 
     # Split dataset into train, validation, and test sets
@@ -258,7 +252,9 @@ def main():
         callbacks=[TqdmCallback(verbose=1), checkpoint_cb, lr_cb, stop_cb]
     )
 
-    model.save("final_model_regions_softmax.keras")  # Native format
+    class_labels = list(classes.keys())
+
+    model.save("model_regions.h5")
 
     print("\nEvaluating model:")
     test_steps = test_size // batch_size

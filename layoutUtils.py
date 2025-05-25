@@ -81,3 +81,34 @@ def create_label_vector(cells, regions, bboxes, class_ids, num_classes):
         #print(f"Assigned bbox {bbox} with class {class_id} to region {region}")
 
     return label
+
+
+def convert_to_softmax_labels(label_vec, num_classes, num_regions):
+    """
+    Converts a flat (C × R) multi-label vector to (R,) softmax label.
+    Assumes: at most 1 active class per region.
+    
+    Inputs:
+        label_vec: (num_classes * num_regions,) with 0/1 (multi-hot per class-region)
+        num_classes: number of foreground classes
+        num_regions: number of spatial regions
+
+    Returns:
+        labels: (num_regions,) int32, with 0 = background, 1..C = classes
+    """
+    label_vec = label_vec.reshape((num_classes, num_regions))
+    
+    softmax_labels = np.zeros((num_regions,), dtype=np.int32)  # default: background
+
+    for region_id in range(num_regions):
+        active_classes = np.where(label_vec[:, region_id] > 0.5)[0]  # which class is set
+        if len(active_classes) == 1:
+            softmax_labels[region_id] = active_classes[0] + 1  # shift: 1 = class 0
+        elif len(active_classes) > 1:
+            # multiple labels in one region → choose highest index or warn
+            softmax_labels[region_id] = active_classes[0] + 1  # or resolve differently
+            print(f"[Warning] Multiple classes in region {region_id}, choosing class {active_classes[0]}")
+        # else: leave as background (0)
+
+    return softmax_labels
+

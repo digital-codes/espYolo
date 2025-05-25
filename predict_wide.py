@@ -9,7 +9,7 @@ import math
 import layoutUtils as layout
 
 # CONFIG
-MODEL_PATH = "best_model_regions_softmax.keras"
+MODEL_PATH = "best_model_regions.keras"
 IMAGE_SIZE = 160
 OUTPUT_DIR = "verify"
 THRESHOLD = 0.4  # Prediction confidence threshold
@@ -48,7 +48,6 @@ def load_dataset(image_dir, classes, cells, regions):
             else:
                 labelVector = layout.create_label_vector(cells, regions, bboxes, labels, len(classes.keys()))
 
-            labelVector = layout.convert_to_softmax_labels(labelVector, len(classes.keys()), len(regions))
             yield image, labelVector # (bboxes, labels)
                 
 
@@ -56,7 +55,7 @@ def load_dataset(image_dir, classes, cells, regions):
         generator,
         output_signature=(
             tf.TensorSpec(shape=(IMAGE_SIZE, IMAGE_SIZE, 3), dtype=tf.float32),
-            tf.TensorSpec(shape=(len(regions)), dtype=tf.float32)
+            tf.TensorSpec(shape=(len(regions)*len(classes.keys())), dtype=tf.float32)
         )
     )
     return ds
@@ -98,20 +97,10 @@ for idx, (img, lbl) in enumerate(dataset):
 
     # Predict
     pred_vec = model.predict(img[None, ...])[0]
-    #print(f"Prediction vector for image {idx}: {pred_vec.shape}")
-    # Get class IDs (0 = background, 1 = class 0, etc.)
-    class_ids = np.argmax(pred_vec, axis=-1)     # shape: (36,)
-    confidences = np.max(pred_vec, axis=-1)      # shape: (36,)
-    for region_id, (class_id, conf) in enumerate(zip(class_ids, confidences)):
-        if class_id != 0:
-            print(f"Region {region_id}: class {class_id - 1}, confidence {conf:.2f}")
-    
-    continue
 
     # Draw boxes
     fig, ax = plt.subplots(1)
     ax.imshow(img_uint8)
-
 
     for class_id in range(len(list(classes.keys()))):
         print(f"Processing class {class_id} ({list(classes.keys())[class_id]})")
