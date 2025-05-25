@@ -2,15 +2,21 @@ import tensorflow as tf
 from PIL import Image
 import os
 import numpy as np
+import sys 
 
 # === CONFIGURATION ===
 MODEL_PATH = "best_model_regions.keras"
 OUTPUT_TFLITE_PATH = "model_regions_int8.tflite"
-REPRESENTATIVE_DATA_DIR = "output/"  # folder with sample images
+REPRESENTATIVE_DATA_DIR = "voc/"  # folder with sample images
 IMAGE_SIZE = (160, 160)  # (height, width)
 
-# === LOAD MODEL ===
-model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+if len(sys.argv) > 1:
+    modelSource = sys.argv[1]
+else:
+    modelSource = MODEL_PATH
+
+modelDest = "".join([modelSource.split(".keras")[0],".tflite"])
+
 
 # === LOAD REPRESENTATIVE IMAGES ===
 def load_image(path):
@@ -27,8 +33,8 @@ def representative_data_gen():
         yield [img[None, ...]]  # shape (1, 160, 160, 3)
 
 
-# Load the trained Keras model
-model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+# === LOAD MODEL ===
+model = tf.keras.models.load_model(modelSource, compile=False)
 
 # Create the converter
 converter = tf.lite.TFLiteConverter.from_keras_model(model)
@@ -46,12 +52,12 @@ converter.inference_output_type = tf.int8
 tflite_model = converter.convert()
 
 # Save the TFLite model
-with open(OUTPUT_TFLITE_PATH, "wb") as f:
+with open(modelDest, "wb") as f:
     f.write(tflite_model)
 
-print(f"TFLite model (int8) saved to {OUTPUT_TFLITE_PATH}")
+print(f"TFLite model (int8) saved to {modelDest}")
 
-interpreter = tf.lite.Interpreter(model_path=OUTPUT_TFLITE_PATH)
+interpreter = tf.lite.Interpreter(model_path=modelDest)
 interpreter.allocate_tensors()
 print("Input:", interpreter.get_input_details())
 print("Output:", interpreter.get_output_details())

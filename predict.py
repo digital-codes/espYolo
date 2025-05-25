@@ -8,11 +8,20 @@ import math
 
 import layoutUtils as layout
 
+import sys 
+
+
 # CONFIG
 MODEL_PATH = "best_model_regions_softmax.keras"
 IMAGE_SIZE = 160
 OUTPUT_DIR = "verify"
 THRESHOLD = 0.4  # Prediction confidence threshold
+
+if len(sys.argv) > 1:
+    modelSource = sys.argv[1]
+else:
+    modelSource = MODEL_PATH
+
 
 GRID = 3
 INPUT_PATH = "./voc"
@@ -67,7 +76,7 @@ with open(os.path.join(INPUT_PATH, "label_map.json"), "r") as f:
 
 
 # === Load model
-model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+model = tf.keras.models.load_model(modelSource, compile=False)
 
 cells = layout.define_cells(IMAGE_SIZE, GRID)
 regions = layout.define_regions(GRID)
@@ -79,15 +88,7 @@ NUM_REGIONS = len(regions)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 dataset = load_dataset(INPUT_PATH, classes, cells, regions)
-
-
-class_counts = [0] * len(list(classes.keys()))
-for _, label in dataset:
-    for class_id in range(len(list(classes.keys()))):
-        start = class_id * NUM_REGIONS
-        end = start + NUM_REGIONS
-        class_counts[class_id] += tf.reduce_sum(label[start:end]).numpy()
-print("Label counts per class:", class_counts)
+print("Classes: ", len(classes))
 
 
 
@@ -96,51 +97,66 @@ for idx, (img, lbl) in enumerate(dataset):
     img_np = img.numpy()
     img_uint8 = (img_np * 255).astype(np.uint8)
 
+    # Ground thruth
+    gt_vec = np.array(lbl)
+    # print("GT vector:",gt_vec)
+    ground_truth = []
+    for region_id in range(NUM_REGIONS):
+            class_id = gt_vec[region_id]
+            if class_id > 0.5:  # Only consider regions with a class
+                gt = {"region":region_id, "class":class_id - 1, "conf":1}
+                print(f"GT: Region {gt["region"]}: class {gt["class"]}, confidence {gt["conf"]:.2f}")
+                ground_truth.append(gt)
+
     # Predict
     pred_vec = model.predict(img[None, ...])[0]
     #print(f"Prediction vector for image {idx}: {pred_vec.shape}")
     # Get class IDs (0 = background, 1 = class 0, etc.)
     class_ids = np.argmax(pred_vec, axis=-1)     # shape: (36,)
     confidences = np.max(pred_vec, axis=-1)      # shape: (36,)
+    detections = []
     for region_id, (class_id, conf) in enumerate(zip(class_ids, confidences)):
         if class_id != 0:
-            print(f"Region {region_id}: class {class_id - 1}, confidence {conf:.2f}")
-    
-    continue
+            detection = {"region":region_id, "class":class_id - 1, "conf":conf}
+            print(f"Predict: Region {detection["region"]}: class {detection["class"]}, confidence {detection["conf"]:.2f}")
+            detections.append(detection)    
 
     # Draw boxes
     fig, ax = plt.subplots(1)
     ax.imshow(img_uint8)
 
 
-    for class_id in range(len(list(classes.keys()))):
-        print(f"Processing class {class_id} ({list(classes.keys())[class_id]})")
-        for region_id in range(NUM_REGIONS):
-            index = class_id * NUM_REGIONS + region_id
-            score = pred_vec[index]
-            if score > THRESHOLD:
-                (sc, ec) = regions[region_id]
-                x1 = cells[sc][0]
-                y1 = cells[sc][1]
-                x2 = cells[ec][2]
-                y2 = cells[ec][3]
-                label = f"{list(classes.keys())[class_id]} ({score:.2f})"
-                rect = plt.Rectangle((x1, y1), x2 - x1, y2 - y1,
-                                     linewidth=2, edgecolor='lime', facecolor='none')
-                ax.add_patch(rect)
-                ax.text(x1, y1 - 5, label, color='lime', fontsize=8, weight='bold')
-            # add ground thruth
-            if lbl[index] > 0.5:
-                # print(f"  Found GT for class {class_id} in region {region_id},{regions[region_id]}")
-                (sc, ec) = regions[region_id]
-                x1 = cells[sc][0]
-                y1 = cells[sc][1]
-                x2 = cells[ec][2]
-                y2 = cells[ec][3]
-                rect = plt.Rectangle((x1, y1), x2 - x1, y2 - y1,
-                                        linewidth=2, edgecolor='red', linestyle='--', facecolor='none')
-                ax.add_patch(rect)
-                ax.text(x1, y2 + 3, f"{list(classes.keys())[class_id]} [GT]", fontsize=8, color='red')
+    for item in ground_truth:
+        # print(f"  Found GT for class {class_id} in region {region_id},{regions[region_id]}")
+        region_id = regions[item["region"]]
+        class_id = item["class"].astype(int)
+        (sc, ec) = region_id
+        x1 = cells[sc][0]
+        y1 = cells[sc][1]
+        x2 = cells[ec][2]
+        y2 = cells[ec][3]
+        rect = plt.Rectangle((x1, y1), x2 - x1, y2 - y1,
+                                linewidth=2, edgecolor='red', linestyle='--', facecolor='none')
+        ax.add_patch(rect)
+        ax.text(x1, y2 + 3, f"{list(classes.keys())[class_id]} [GT]", fontsize=8, color='red')
+
+
+    for item in detections:
+        region_id = regions[item["region"]]
+        class_id = item["class"].astype(int)
+        conf = item["conf"]
+        if conf < THRESHOLD:
+            continue
+        (sc, ec) = region_id
+        x1 = cells[sc][0]
+        y1 = cells[sc][1]
+        x2 = cells[ec][2]
+        y2 = cells[ec][3]
+        rect = plt.Rectangle((x1, y1), x2 - x1, y2 - y1,
+                                linewidth=2, edgecolor='green', linestyle='--', facecolor='none')
+        ax.add_patch(rect)
+        ax.text(x1, y1 - 3, f"{list(classes.keys())[class_id]} [{conf:0.2f}]", fontsize=8, color='green')
+
 
 
     ax.axis('off')
