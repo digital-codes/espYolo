@@ -114,7 +114,8 @@ def build_quadrant_model(input_shape, output_dim):
     inputs = tf.keras.Input(shape=input_shape)
     x = inputs
     # filterSizes = [16, 16, 32, 32, 64, 64, 128] # 128, 128]  # leave out 128, 128
-    filterSizes = [16, 32, 32, 64, 128 ] # 128, 128]  # leave out 128, 128
+    # filterSizes = [16, 32, 32, 64, 128 ] # 128, 128]  # leave out 128, 128
+    filterSizes = [16, 32, 64, 64 ] # 128, 128]  # leave out 128, 128
     for filters in filterSizes: 
         x = tf.keras.layers.Conv2D(filters, 3, padding='same', activation='relu')(x)
         x = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2)(x)

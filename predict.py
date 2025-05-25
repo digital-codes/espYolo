@@ -12,8 +12,7 @@ import layoutUtils as layout
 MODEL_PATH = "best_model_regions.keras"
 IMAGE_SIZE = 160
 OUTPUT_DIR = "verify"
-THRESHOLD = 0.25  # Prediction confidence threshold
-MAX_IMAGES = 50
+THRESHOLD = 0.35  # Prediction confidence threshold
 
 GRID = 3
 INPUT_PATH = "./voc"
