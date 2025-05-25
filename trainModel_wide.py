@@ -47,7 +47,7 @@ checkpoint_cb = ModelCheckpoint(
 lr_cb = ReduceLROnPlateau(
     monitor='val_f1',
     factor=0.5,
-    patience=5,
+    patience=20,
     min_lr=1e-6,
     mode='max',
     verbose=1
@@ -55,7 +55,7 @@ lr_cb = ReduceLROnPlateau(
 
 
 stop_cb = tf.keras.callbacks.EarlyStopping(
-    monitor='val_f1', patience=20, mode='max', restore_best_weights=True
+    monitor='val_f1', patience=50, mode='max', restore_best_weights=True
 )
 
 

@@ -47,7 +47,7 @@ checkpoint_cb = ModelCheckpoint(
 lr_cb = ReduceLROnPlateau(
     monitor='val_sparse_categorical_accuracy',
     factor=0.5,
-    patience=20,
+    patience=30,
     min_lr=1e-6,
     mode='max',
     verbose=1
@@ -55,7 +55,7 @@ lr_cb = ReduceLROnPlateau(
 
 
 stop_cb = tf.keras.callbacks.EarlyStopping(
-    monitor='val_sparse_categorical_accuracy', patience=50, mode='max', restore_best_weights=True
+    monitor='val_sparse_categorical_accuracy', patience=100, mode='max', restore_best_weights=True
 )
 
 
@@ -66,7 +66,7 @@ def build_quadrant_model(input_shape, num_regions, num_classes):
     x = inputs
     # filterSizes = [16, 16, 32, 32, 64, 64, 128] # 128, 128]  # leave out 128, 128
     # filterSizes = [16, 32, 32, 64, 128 ] # 128, 128]  # leave out 128, 128
-    filterSizes = [16, 32, 64, 128 ] # 128, 128]  # leave out 128, 128
+    filterSizes = [16, 32, 64, 64 ] # 128, 128]  # leave out 128, 128
     for f, filters in enumerate(filterSizes): 
         x = tf.keras.layers.Conv2D(filters, 3, padding='same', activation='relu')(x)
         if f < len(filterSizes) - 1:
@@ -74,7 +74,7 @@ def build_quadrant_model(input_shape, num_regions, num_classes):
     # global average pooling
     x = tf.keras.layers.GlobalAveragePooling2D()(x)
 
-    x = tf.keras.layers.Dense(256, activation='relu')(x)
+    x = tf.keras.layers.Dense(512, activation='relu')(x)
     #x = tf.keras.layers.Dense(4 * filterSizes[-1], activation='relu')(x)
     x = tf.keras.layers.Dropout(0.3)(x)
 
