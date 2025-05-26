@@ -18,7 +18,7 @@ IMAGE_SIZE = 160
 OUTPUT_DIR = "verify"
 THRESHOLD = 0.4  # Prediction confidence threshold
 
-GRID = 3
+GRID = 5
 INPUT_PATH = "./voc"
 IMAGE_SIZE = 160
 
@@ -33,9 +33,6 @@ if len(sys.argv) > 2:
 else:
     imgSource = INPUT_PATH
 
-
-GRID = 3
-IMAGE_SIZE = 160
 
 def load_dataset(image_dir, classes, cells, regions):
     label_files = [
