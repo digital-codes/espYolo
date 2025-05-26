@@ -36,7 +36,7 @@ regions = layout.define_regions(GRID)
 
 
 checkpoint_cb = ModelCheckpoint(
-    "best_model_regions.keras",              # recommended Keras format
+    "best_model_regions_wide.keras",              # recommended Keras format
     monitor="val_f1",            # <- use F1 score now
     mode="max",                  # <- maximize F1
     save_best_only=True,
@@ -67,9 +67,11 @@ def build_quadrant_model(input_shape, output_dim):
     # filterSizes = [16, 16, 32, 32, 64, 64, 128] # 128, 128]  # leave out 128, 128
     # filterSizes = [16, 32, 32, 64, 128 ] # 128, 128]  # leave out 128, 128
     filterSizes = [16, 16, 32, 64 ] # 128, 128]  # leave out 128, 128
-    for filters in filterSizes: 
+    for f, filters in enumerate(filterSizes): 
         x = tf.keras.layers.Conv2D(filters, 3, padding='same', activation='relu')(x)
         x = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2)(x)
+        if f < len(filterSizes) - 1:
+            x = tf.keras.layers.Dropout(0.1)(x)
 
     x = tf.keras.layers.Flatten()(x)
     # dropout extra
@@ -254,7 +256,7 @@ def main():
 
     class_labels = list(classes.keys())
 
-    model.save("model_regions.h5")
+    model.save("final_model_regions_wide.keras")  # Native format
 
     print("\nEvaluating model:")
     test_steps = test_size // batch_size

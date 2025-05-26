@@ -7,9 +7,12 @@ import json
 import math
 
 import layoutUtils as layout
+import sys 
+
+
 
 # CONFIG
-MODEL_PATH = "best_model_regions.keras"
+MODEL_PATH = "best_model_regions_wide.keras"
 IMAGE_SIZE = 160
 OUTPUT_DIR = "verify"
 THRESHOLD = 0.4  # Prediction confidence threshold
@@ -17,6 +20,13 @@ THRESHOLD = 0.4  # Prediction confidence threshold
 GRID = 3
 INPUT_PATH = "./voc"
 IMAGE_SIZE = 160
+
+if len(sys.argv) > 1:
+    modelSource = sys.argv[1]
+else:
+    modelSource = MODEL_PATH
+
+
 
 def load_dataset(image_dir, classes, cells, regions):
     label_files = [
@@ -66,7 +76,7 @@ with open(os.path.join(INPUT_PATH, "label_map.json"), "r") as f:
 
 
 # === Load model
-model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+model = tf.keras.models.load_model(modelSource, compile=False)
 
 cells = layout.define_cells(IMAGE_SIZE, GRID)
 regions = layout.define_regions(GRID)

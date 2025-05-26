@@ -164,4 +164,5 @@ for idx, (img, lbl) in enumerate(dataset):
     plt.savefig(save_path, bbox_inches='tight', pad_inches=0)
     plt.close(fig)
 
+
 print(f"✅ Saved {idx+1} prediction images to '{OUTPUT_DIR}/'")
