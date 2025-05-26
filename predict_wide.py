@@ -7,6 +7,7 @@ import json
 import math
 
 import layoutUtils as layout
+
 import sys 
 
 
@@ -26,7 +27,15 @@ if len(sys.argv) > 1:
 else:
     modelSource = MODEL_PATH
 
+INPUT_PATH = "./voc"
+if len(sys.argv) > 2:
+    imgSource = sys.argv[2]
+else:
+    imgSource = INPUT_PATH
 
+
+GRID = 3
+IMAGE_SIZE = 160
 
 def load_dataset(image_dir, classes, cells, regions):
     label_files = [
@@ -71,7 +80,7 @@ def load_dataset(image_dir, classes, cells, regions):
     return ds
 
 
-with open(os.path.join(INPUT_PATH, "label_map.json"), "r") as f:
+with open(os.path.join(imgSource, "label_map.json"), "r") as f:
     classes = json.load(f)
 
 
@@ -87,7 +96,7 @@ NUM_REGIONS = len(regions)
 # === Make sure output dir exists
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-dataset = load_dataset(INPUT_PATH, classes, cells, regions)
+dataset = load_dataset(imgSource, classes, cells, regions)
 
 
 class_counts = [0] * len(list(classes.keys()))

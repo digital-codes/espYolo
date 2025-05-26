@@ -173,7 +173,7 @@ def main():
     parser = argparse.ArgumentParser(description="Train a quadrant prediction model.")
     parser.add_argument(
         "--image_dir", "-i", type=str, required=True,
-        help="Path to the root directory containing the TUGraz dataset."
+        help="Path to the image root directory"
     )
     args = parser.parse_args()
 
@@ -183,6 +183,8 @@ def main():
 
     with open(os.path.join(image_dir, "label_map.json"), "r") as f:
         classes = json.load(f)
+
+    print(f"Loaded {len(classes)} classes from label_map.json")
 
     cells = layout.define_cells(IMAGE_SIZE, GRID)
     regions = layout.define_regions(GRID)    

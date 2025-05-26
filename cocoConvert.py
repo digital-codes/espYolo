@@ -39,7 +39,7 @@ def coco_to_custom_cropped_format(
     for ann in coco["annotations"]:
         image_annotations[ann["image_id"]]["raw_annots"] = image_annotations[ann["image_id"]].get("raw_annots", []) + [ann]
 
-    results = []
+    results = 0
 
     for image_id, ann_data in image_annotations.items():
         info = image_id_to_info[image_id]
@@ -104,9 +104,10 @@ def coco_to_custom_cropped_format(
                         json.dump(label_data, f, indent=4)
 
                     print(f"Saved: {cropped_name}, Labels: {label_name}")
+                    results += 1
             
 
-    print(f"Done. {len(results)} cropped images saved.")
+    print(f"Done. {results} cropped images saved.")
     with open(os.path.join(cropped_image_dir, "label_map.json"), "w") as f:
         json.dump(label_map, f, indent=4)
     print(f"Label map saved to {os.path.join(cropped_image_dir, 'label_map.json')}")    
@@ -116,7 +117,7 @@ if __name__ == "__main__":
         coco_to_custom_cropped_format(
             coco_json_path=f"/mnt_ai/data/fiftyone_traffic_objects_output/{d}/labels.json",
             image_dir=f"/mnt_ai/data/fiftyone_traffic_objects_output/{d}/data",
-            cropped_image_dir=f"coco/{d}",
+            cropped_image_dir=f"coco/all",
             crop_size=(160, 160)
         )
     

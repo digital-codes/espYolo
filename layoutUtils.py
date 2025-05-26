@@ -34,8 +34,9 @@ def find_cell(cells, x,y):
     Find the cell index for the given coordinates (x, y).
     """
     for idx, (x_min, y_min, x_max, y_max) in enumerate(cells):
-        if x_min <= x <= x_max and y_min <= y <= y_max:
+        if x_min <= int(x) <= x_max and y_min <= int(y) <= y_max:
             return idx
+    print(f"[WARN] No cell found for coordinates ({x}, {y})")        
     return None 
 
 def find_region(regions, start_cell, end_cell):
@@ -48,8 +49,8 @@ def find_region(regions, start_cell, end_cell):
     return None
 
 def map_bbox(cells, regions, bbox):
-    width = bbox[2] - bbox[0]
-    height = bbox[3] - bbox[1]
+    width = int(bbox[2] - bbox[0])
+    height = int(bbox[3] - bbox[1])
     wadjust = width // 20
     hadjust = height // 20
     # Adjust bbox to avoid edge cases
