@@ -41,11 +41,26 @@ birds_eye_camera = Camera(
     60,  # wider FOV to capture full track
 )
 
+side_camera = Camera(
+    "location",
+    [.7, .4, .7],  # 1.5 m above the center
+    "look_at",
+    [0, 0, 0],  # look at the center of the arena
+    "angle",
+    60,  # wider FOV to capture full track
+)
+
 
 def robot_position(t, duration):
     angle = 2 * np.pi * (1.5 * t / duration)
     return [a * np.cos(angle), 0, b * np.sin(angle)]
 
+
+def cam_pos(x,y,z,ry,rz):
+    return (
+        [x - 0.01, y + ry + 0.02, z + rz - 0.015],
+        [x + 0.01, y + ry + 0.03, z + rz + 0.005]
+    )
 
 def robot_union(x, z, rx=0.03, ry=0.025, rz=0.05):
     return Union(
@@ -66,22 +81,19 @@ def robot_union(x, z, rx=0.03, ry=0.025, rz=0.05):
         ),
         # Camera mount
         Box(
-            [x - 0.015, ry, z - 0.01],
-            [x + 0.015, ry + 0.02, z + 0.01],
-            color([0.2, 0.2, 0.2]),
+            [x - 0.015, ry, z + rz - .01],
+            [x + 0.015, ry + 0.02, z + rz],
+            color([1.2, 0.2, 0.2]),
         ),
         # Camera box
         Box(
-            [x - 0.01, ry + 0.02, z - 0.005],
-            [x + 0.01, ry + 0.03, z + 0.005],
-            color([0.1, 0.1, 0.1]),
-        ),
-        # Torch (next to camera)
-        Box(
-            [x + 0.02, ry + 0.02, z - 0.005],
-            [x + 0.03, ry + 0.03, z + 0.005],
-            color([1, 1, 0.6]),
-        ),
+            cam_pos(x, 0, z, ry, rz)[0],
+            cam_pos(x, 0, z, ry, rz)[1],
+            
+            #[x - 0.01, ry + 0.02, z + rz - 0.015],
+            #[x + 0.01, ry + 0.03, z + rz + 0.005],
+            color([0.1, 1.1, 0.1]),
+        )
     )
 
 
@@ -106,14 +118,15 @@ def oval_track_segments(radius=0.25, width=0.02, gap=0.005, height=0.001, segmen
 
 def create_scene(t, duration, view="robot"):
     pos = robot_position(t, duration)
-    look_at = [pos[0], 0, pos[2] + 6 * rz]
+    look_at = [pos[0], 0, pos[2] + 5 * rz]
     camera_pos = [pos[0], ry + 0.1, pos[2] + rz / 3]
-    torch_pos = [pos[0], ry + 0.1, pos[2] + rz / 3]
 
     if view == "bird":
         camera = birds_eye_camera
     elif view == "robot":
         camera = Camera("location", camera_pos, "look_at", look_at, "angle", camera_fov)
+    elif view == "side":
+        camera = side_camera
 
     track = oval_track_segments()
 
@@ -121,6 +134,8 @@ def create_scene(t, duration, view="robot"):
         camera,
         [
             LightSource([0, 10, 0], "color", [1.0, 1.0, 1.0], "shadowless"),
+            LightSource([.7,.4,.7], 'color', [.5,.5,.5],"spotlight","radius",40,"point_at",[0, 0, 0]),
+
             # LightSource([2, 4, -3], 'color', [1.5, 1.5, 1.5]),
             # LightSource(
             #     torch_pos,
@@ -165,6 +180,7 @@ for i in range(frames):
     t = i / fps
     scene_robot = create_scene(t, duration, "robot")
     scene_bird = create_scene(t, duration, "bird")
+    scene_side = create_scene(t, duration, "side")
 
     scene_robot.render(
         os.path.join(output_dir, f"robot_{i:03d}.png"),
@@ -174,6 +190,12 @@ for i in range(frames):
     )
     scene_bird.render(
         os.path.join(output_dir, f"bird_{i:03d}.png"),
+        width=600,
+        height=450,
+        antialiasing=0.01,
+    )
+    scene_side.render(
+        os.path.join(output_dir, f"side_{i:03d}.png"),
         width=600,
         height=450,
         antialiasing=0.01,
