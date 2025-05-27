@@ -296,8 +296,8 @@ for i in range(frames):
     angle = pos[3]  # angle in degrees
 
     camera_pos = cam_pos(pos[0],0,pos[2], ry,0)[2]
-    cam_dz = np.cos(np.radians(angle + 90))
-    cam_dx = np.sin(np.radians(angle + 90))
+    cam_dz = np.cos(np.radians(-angle))
+    cam_dx = np.sin(np.radians(-angle))
     x = pos[0] + cam_dx * 5*rz
     z = pos[2] + cam_dz * 5*rz
     look_at = [x, 0, z]  # Look at point in front of the robot    
@@ -312,6 +312,7 @@ for i in range(frames):
     for obj in object_coords:
         # Calculate the center position of the bounding box
         pnt = [obj["pos1"][i] - (obj["pos1"][i] - obj["pos0"][i]) / 2 for i in range(3)]
+        print("Object position:", pnt)
         screen_coords, rel_pos = project_point(pnt,camera_pos, look_at, camera_fov, 600, 450)
         if screen_coords:
             print(f"Object {obj['type']} at frame {i:03d} on screen at:", screen_coords, rel_pos)
