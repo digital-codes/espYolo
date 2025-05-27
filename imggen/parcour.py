@@ -79,7 +79,7 @@ def cam_pos(x,y,z,ry,rz,h=.02):
     return (
         [x - cx - 0.01, y + cy + h/4, z + cz - 0.01],
         [x + cx + 0.01, y + cy + 3*h/4, z + cz + 0.01],
-        [x + cx, y + cy + h/2, z + cz + .01]  # make sure camera is not inside box: front
+        [x + cx, y + cy + h/2, z + cz]  # make sure camera is not inside box: front
     )
 
 
@@ -111,8 +111,8 @@ def robot_union(x, z, rx=0.03, ry=0.025, rz=0.05, rot=0):
         ),
         # Camera box
         Box(
-            cam_pos(0, 0, 0, ry, 0)[0],
-            cam_pos(0, 0, 0, ry, 0)[1],
+            cam_pos(0, 0, 0, ry/10, 0)[0],
+            cam_pos(0, 0, 0, ry/10, 0)[1],
             color([0.1, 1.1, 0.1]),
         ),
         "rotate",[0, -rot, 0],
@@ -195,7 +195,7 @@ def create_scene(t, duration, view="robot"):
     angle = pos[3]  # angle in degrees
     # look_at = [pos[0], 0, pos[2] + 5 * rz]
     # camera_pos = [pos[0], ry + 0.1, pos[2] + rz / 3]
-    camera_pos = cam_pos(pos[0],0,pos[2], ry,rz)[2]
+    camera_pos = cam_pos(pos[0],0,pos[2], ry,0)[2]
     cam_dz = np.cos(np.radians(-angle))
     cam_dx = np.sin(np.radians(-angle))
     x = pos[0] + cam_dx * 5*rz
@@ -295,7 +295,7 @@ for i in range(frames):
     print("Robot position at frame", i, ":", pos)
     angle = pos[3]  # angle in degrees
 
-    camera_pos = cam_pos(pos[0],0,pos[2], ry,rz)[2]
+    camera_pos = cam_pos(pos[0],0,pos[2], ry,0)[2]
     cam_dz = np.cos(np.radians(angle + 90))
     cam_dx = np.sin(np.radians(angle + 90))
     x = pos[0] + cam_dx * 5*rz
