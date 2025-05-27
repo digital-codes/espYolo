@@ -196,6 +196,12 @@ def create_scene(t, duration, view="robot"):
     look_at = [pos[0], 0, pos[2] + 5 * rz]
     # camera_pos = [pos[0], ry + 0.1, pos[2] + rz / 3]
     camera_pos = cam_pos(pos[0],0,pos[2], ry,rz)[2]
+    cam_dx = np.cos(np.radians(angle))
+    cam_dz = np.sin(np.radians(angle))
+    x = pos[0] + cam_dx * 0.1
+    z = pos[2] + cam_dz * 0.1
+    look_at = [x, 0, z]  # Look at point in front of the robot    
+    
     #print("Camera position:", camera_pos)
     #def cam_pos(x,y,z,ry,rz):
 
