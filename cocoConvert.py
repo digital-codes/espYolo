@@ -51,17 +51,37 @@ def coco_to_custom_cropped_format(
 
         img = Image.open(original_path)
         width, height = img.size
-        crop_w, crop_h = crop_size
+        # Calculate aspect ratio of crop size
+        crop_aspect_ratio = crop_size[0] / crop_size[1]
 
-        # Compute crop box (center crop)
-        cx, cy = width // 2, height // 2
-        left = max(0, cx - crop_w // 2)
-        top = max(0, cy - crop_h // 2)
-        right = left + crop_w
-        bottom = top + crop_h
+        # Calculate aspect ratio of the image
+        img_aspect_ratio = width / height
 
-        # Crop image
+        # Determine the maximum crop dimensions while maintaining the aspect ratio
+        if img_aspect_ratio > crop_aspect_ratio:
+            # Image is wider than the crop aspect ratio
+            max_crop_height = height
+            max_crop_width = int(height * crop_aspect_ratio)
+        else:
+            # Image is taller or equal to the crop aspect ratio
+            max_crop_width = width
+            max_crop_height = int(width / crop_aspect_ratio)
+
+        # Center crop the image to the maximum size
+        left = (width - max_crop_width) // 2
+        top = (height - max_crop_height) // 2
+        right = left + max_crop_width
+        bottom = top + max_crop_height
+
         cropped_img = img.crop((left, top, right, bottom))
+
+        # Scale the cropped image to the target crop size
+        cropped_img = cropped_img.resize(crop_size) # , Image.ANTIALIAS)
+
+        # Store crop dimensions and scale ratio for bounding box adjustment
+        scale_x = crop_size[0] / max_crop_width
+        scale_y = crop_size[1] / max_crop_height
+        
 
         # Adjust annotations
         bboxes = []
@@ -74,13 +94,16 @@ def coco_to_custom_cropped_format(
             # Check full inclusion in crop
             if x1 >= left and y1 >= top and x2 <= right and y2 <= bottom:
                 # Adjust to crop
-                adj_x1 = x1 - left
-                adj_y1 = y1 - top
-                adj_x2 = x2 - left
-                adj_y2 = y2 - top
+                adj_x1 = (x1 - left) * scale_x
+                adj_y1 = (y1 - top) * scale_y
+                adj_x2 = (x2 - left) * scale_x
+                adj_y2 = (y2 - top) * scale_y
 
                 bboxes.append([adj_x1, adj_y1, adj_x2, adj_y2])
                 labels.append(category_ids[ann["category_id"]])
+                
+            else:
+                print(f"Warning: annotation {ann['id']} not fully contained in crop for image {info['file_name']}")
 
         if bboxes:
                     # Prepare filenames
