@@ -28,10 +28,42 @@ birds_eye_camera = Camera(
 
 
 def robot_position(t, duration):
-    angle = 2 * np.pi * (t / duration)
+    angle = 2 * np.pi * (1.5 * t / duration)
     return [a * np.cos(angle), 0, b * np.sin(angle)]
 
 # robot cam looks away from wheels
+from vapory import Union, Box, Cylinder
+
+def robot_union(x, z, rx=0.03, ry=0.025, rz=0.05):
+    return Union(
+        # Body box
+        Box([x - rx, 0,     z - rz],
+            [x + rx, ry,    z + rz],
+            color([0.4, 0.4, 0.4])),
+
+        # Wheels (rear left and right)
+        Cylinder([x + rx - 0.005, 0.005, z - rz],
+                 [x + rx - 0.005, 0.005, z - rz - 0.02], 0.01, color([0.1, 0.1, 0.1])),
+        Cylinder([x - rx + 0.005, 0.005, z - rz],
+                 [x - rx + 0.005, 0.005, z - rz - 0.02], 0.01, color([0.1, 0.1, 0.1])),
+
+        # Camera mount
+        Box([x - 0.015, ry,        z - 0.01],
+            [x + 0.015, ry + 0.02, z + 0.01],
+            color([0.2, 0.2, 0.2])),
+
+        # Camera box
+        Box([x - 0.01, ry + 0.02, z - 0.005],
+            [x + 0.01, ry + 0.03, z + 0.005],
+            color([0.1, 0.1, 0.1])),
+
+        # Torch (next to camera)
+        Box([x + 0.02, ry + 0.02, z - 0.005],
+            [x + 0.03, ry + 0.03, z + 0.005],
+            color([1, 1, 0.6]))
+    )
+
+
 
 def oval_track_segments(radius_outer=0.26, radius_inner=0.24, height=0.001, segments=60):
     objects = []
@@ -51,7 +83,7 @@ def oval_track_segments(radius_outer=0.26, radius_inner=0.24, height=0.001, segm
 
 def create_scene(t, duration,view="robot"):
     pos = robot_position(t, duration)
-    look_at = [pos[0], 0, pos[2] + 10*rz]
+    look_at = [pos[0], 0, pos[2] + 6*rz]
     camera_pos = [pos[0], ry + .1, pos[2] + rz/3]
     torch_pos = [pos[0], ry + .1, pos[2] + rz/3]
 
@@ -65,7 +97,8 @@ def create_scene(t, duration,view="robot"):
         )
 
     track = oval_track_segments()
-    
+
+   
     return Scene(
         camera,
         [
@@ -82,19 +115,19 @@ def create_scene(t, duration,view="robot"):
                 'shadowless'
             ),
             # robot
+            robot_union(pos[0], pos[2], rx, ry, rz),
+
             ## body
-            Box([pos[0] - rx/2, 0, pos[2] - rz/2], [pos[0] + rx/2, ry, pos[2] + rz/2], color([0.2, 0.2, 0.2])),
+            # Box([pos[0] - rx/2, 0, pos[2] - rz/2], [pos[0] + rx/2, ry, pos[2] + rz/2], color([0.2, 0.2, 0.2])),
             # camera mount
-            Box([pos[0] - rx/4, ry + .01, pos[2] - rz/4], [pos[0] + rx/4, ry + 0.05, pos[2] + rz/4], color([0.3, 0.3, 0.3])),
+            # Box([pos[0] - rx/4, ry + .01, pos[2] - rz/4], [pos[0] + rx/4, ry + 0.05, pos[2] + rz/4], color([0.3, 0.3, 0.3])),
             ## wheels
-            Cylinder([pos[0] + 0.025, 0.005, pos[2] - 0.05], [pos[0] + 0.025, 0.005, pos[2] - 0.07], 0.01, color([0.05, 0.05, 0.05])),
-            Cylinder([pos[0] - 0.025, 0.005, pos[2] - 0.05], [pos[0] - 0.025, 0.005, pos[2] - 0.07], 0.01, color([0.05, 0.05, 0.05])),
+            ##Cylinder([pos[0] + 0.025, 0.005, pos[2] - 0.05], [pos[0] + 0.025, 0.005, pos[2] - 0.07], 0.01, color([0.05, 0.05, 0.05])),
+            ## Cylinder([pos[0] - 0.025, 0.005, pos[2] - 0.05], [pos[0] - 0.025, 0.005, pos[2] - 0.07], 0.01, color([0.05, 0.05, 0.05])),
             # Arena floor
             Box([-0.5, -0.01, -0.5], [0.5, 0, 0.5], color([0.9, 0.9, 0.0])),
             # Oval track (50 cm diameter, 2 cm width)
             *track,
-            #Cylinder([-0.25, 0.001, 0], [0.25, 0.001, 0], 0.26, color([1, 1, 1])),
-            #Cylinder([-0.25, 0.002, 0], [0.25, 0.002, 0], 0.24, color([0.9, 0.9, 0.9])),
             # objects
             Box([0.2, 0, 0.2], [0.25, 0.05, 0.25], color([1, 0.6, 0.5])),
             Cone([0.1, 0, 0.1], 0.03, [0.1, 0.08, 0.1], 0, color([1, 0.8, 0])),
@@ -104,8 +137,8 @@ def create_scene(t, duration,view="robot"):
         ])
 
 # Animation parameters
-duration = 3.0
-fps = 10
+duration = 4.0
+fps = 15
 frames = int(duration * fps)
 
 
@@ -114,8 +147,8 @@ for i in range(frames):
     scene_robot = create_scene(t, duration, "robot")
     scene_bird  = create_scene(t, duration, "bird")
 
-    scene_robot.render(os.path.join(output_dir, f"robot_{i:03d}.png"), width=400, height=300, antialiasing=0.01)
-    scene_bird.render(os.path.join(output_dir, f"bird_{i:03d}.png"), width=400, height=300, antialiasing=0.01)
+    scene_robot.render(os.path.join(output_dir, f"robot_{i:03d}.png"), width=400, height=400, antialiasing=0.01)
+    scene_bird.render(os.path.join(output_dir, f"bird_{i:03d}.png"), width=400, height=400, antialiasing=0.01)
 
 
 
