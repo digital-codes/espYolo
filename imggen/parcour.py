@@ -1,5 +1,8 @@
 import os
 import numpy as np
+import json
+from PIL import Image
+from PIL import ImageDraw
 
 from vapory import (
     Scene,
@@ -33,8 +36,8 @@ camera_fov = 43.6  # horizontal FOV ~ matching 2.32 mm lens on ~1 mm sensor
 
 object_coords = [
     {"type":"box","pos0":[0.2, 0, 0.2],"pos1":[.24,.04,.24]},  # Box
-    {"type":"cone","pos0":[0.1, 0, 0.1],"r0":.03,"pos1":[0.1, 0.08, 0.1],"r1":0},  # Box
-    {"type":"sphere","pos0":[-0.2, 0.04, 0.25],"r0":.04,"pos1":[.25,.05,.25]},  # Box
+    {"type":"cone","pos0":[0.1, 0, 0.1],"r0":.03,"pos1":[0.1, 0.08, 0.1],"r1":0},  # Cone
+    {"type":"sphere","pos0":[-0.2, 0.04, 0.25],"r0":.04},  # Sphere
 ]
 
 
@@ -87,6 +90,8 @@ def cam_pos(x,y,z,ry,rz,h=.02):
 
 def robot_union(x, z, rx=0.03, ry=0.025, rz=0.05, rot=0):
     print(x,z,rot)
+    cam0 = cam_pos(0, 0, 0, ry, 0)[0]
+    cam1 = cam_pos(0, 0, 0, ry, 0)[1]
     return Union(
         # Body box
         Box([- rx/2, 0, 0], [rx/2, ry, -rz], color([0.4, 0.4, 0.4])),
@@ -111,8 +116,10 @@ def robot_union(x, z, rx=0.03, ry=0.025, rz=0.05, rot=0):
         ),
         # Camera box
         Box(
-            cam_pos(0, 0, 0, ry/10, 0)[0],
-            cam_pos(0, 0, 0, ry/10, 0)[1],
+            [cam0[0],cam0[1],cam0[2] - .01],
+            [cam1[0],cam1[1],cam1[2] - .015],
+            #cam_pos(0, 0, 0, ry*.9, 0)[0],
+            #cam_pos(0, 0, 0, ry*.9, 0)[1],
             color([0.1, 1.1, 0.1]),
         ),
         "rotate",[0, -rot, 0],
@@ -140,52 +147,59 @@ def oval_track_segments(radius=0.25, width=0.02, gap=0.005, height=0.001, segmen
 
 
 
-def get_camera_vectors(camera_pos, look_at):
+def get_camera_basis(cam_pos, look_at):
     """
-    Given a camera position and a look-at point, compute:
-    - forward: direction camera is looking
-    - right: camera's right direction (perpendicular to up and forward)
-    - up: camera's vertical axis
+    Computes the camera's coordinate system (right, up, forward).
+    Returns right, up, forward vectors for use in projection.
     """
-    forward = np.array(look_at) - np.array(camera_pos)
+    forward = np.array(look_at) - np.array(cam_pos)
     forward /= np.linalg.norm(forward)
 
-    # Global up vector
-    global_up = np.array([0, 1, 0])
+    world_up = np.array([0, 1, 0])
+    # Handle edge case where forward is parallel to world_up
+    if np.allclose(forward, world_up) or np.allclose(forward, -world_up):
+        world_up = np.array([0, 0, 1])
 
-    # If forward is nearly vertical, fallback to another up vector
-    if np.allclose(forward, global_up) or np.allclose(forward, -global_up):
-        global_up = np.array([0, 0, 1])
-
-    right = np.cross(global_up, forward)
+    right = np.cross(world_up, forward)
     right /= np.linalg.norm(right)
 
     up = np.cross(forward, right)
     up /= np.linalg.norm(up)
 
-    return forward, right, up
+    return right, up, forward
 
-def project_point(point, camera_pos, look_at, fov_deg, img_width, img_height):
-    forward, right, up = get_camera_vectors(camera_pos, look_at)
-    R = np.stack([right, up, -forward], axis=1)
-    p_cam = np.dot(R.T, np.array(point) - np.array(camera_pos))
+def project_point(point, cam_pos, look_at, fov_deg, img_width, img_height):
+    """
+    Projects a 3D world-space point onto 2D image space using pinhole projection.
+    Returns 2D screen coordinates and camera-space coordinates (or None if not visible).
+    """
+    right, up, forward = get_camera_basis(cam_pos, look_at)
+    print("Camera basis vectors:", right, up, forward)
 
-    if p_cam[2] <= 0.0001:  # too close or behind
+    # Build rotation matrix: columns = right, up, -forward
+    R = np.stack([right, up, forward], axis=1)
+
+    # Transform point into camera space
+    p_world = np.array(point) - np.array(cam_pos)
+    p_cam = np.dot(R.T, p_world)
+
+    print("Point in camera space:", p_cam)
+    # Reject points behind the camera
+    if p_cam[2] <= 0:
         return None, p_cam
 
-    # Projection scale based on horizontal FOV
-    aspect = img_width / img_height
+    # Perspective projection
     fov_rad = np.radians(fov_deg)
-    x_ndc = (p_cam[0] / (p_cam[2] * np.tan(fov_rad / 2)))  # normalized device coord
-    y_ndc = (p_cam[1] / (p_cam[2] * np.tan(fov_rad / 2) / aspect))
+    aspect = img_width / img_height
 
-    # Convert to screen coordinates
+    x_ndc = p_cam[0] / (p_cam[2] * np.tan(fov_rad / 2))
+    y_ndc = p_cam[1] / (p_cam[2] * np.tan(fov_rad / 2) / aspect)
+
     x_screen = int((x_ndc + 1) * img_width / 2)
     y_screen = int((1 - y_ndc) * img_height / 2)
 
-    # Reject points outside screen bounds
     if not (0 <= x_screen < img_width and 0 <= y_screen < img_height):
-        return None, p_cam
+        return None, p_cam  # outside image frame
 
     return (x_screen, y_screen), p_cam
 
@@ -193,8 +207,6 @@ def project_point(point, camera_pos, look_at, fov_deg, img_width, img_height):
 def create_scene(t, duration, view="robot"):
     pos = robot_position(t, duration)
     angle = pos[3]  # angle in degrees
-    # look_at = [pos[0], 0, pos[2] + 5 * rz]
-    # camera_pos = [pos[0], ry + 0.1, pos[2] + rz / 3]
     camera_pos = cam_pos(pos[0],0,pos[2], ry,0)[2]
     cam_dz = np.cos(np.radians(-angle))
     cam_dx = np.sin(np.radians(-angle))
@@ -215,7 +227,18 @@ def create_scene(t, duration, view="robot"):
 
     track = oval_track_segments()
 
-
+    pointer = Cylinder(
+        [camera_pos[0], camera_pos[1] + 0.005, camera_pos[2]], # camera_pos,
+        look_at,
+        0.001,  # Thin line
+        color([1, 0, 0]),  # Red color for visibility
+    )
+    antenna = Cylinder(
+        camera_pos,
+        [camera_pos[0], camera_pos[1] + 0.05, camera_pos[2]],
+        0.005,  # Thin antenna
+        color([1, 1, 0]),  # Yellow color for visibility
+    )
 
     return Scene(
         camera,
@@ -236,6 +259,8 @@ def create_scene(t, duration, view="robot"):
             # ),
             # robot
             robot_union(pos[0], pos[2], rx, ry, rz,angle),
+            pointer,
+            antenna,
             ## body
             # Box([pos[0] - rx/2, 0, pos[2] - rz/2], [pos[0] + rx/2, ry, pos[2] + rz/2], color([0.2, 0.2, 0.2])),
             # camera mount
@@ -289,12 +314,10 @@ for i in range(frames):
         antialiasing=0.01,
     )
 
-    # def project_point(point, cam_pos, look_at, fov_deg, img_width, img_height):
-    # bounding boxes 
+    # project_point(point, cam_pos, look_at, fov_deg, img_width, img_height)
+    # get coordinates
     pos = robot_position(t, duration)
-    print("Robot position at frame", i, ":", pos)
     angle = pos[3]  # angle in degrees
-
     camera_pos = cam_pos(pos[0],0,pos[2], ry,0)[2]
     cam_dz = np.cos(np.radians(-angle))
     cam_dx = np.sin(np.radians(-angle))
@@ -302,22 +325,50 @@ for i in range(frames):
     z = pos[2] + cam_dz * 5*rz
     look_at = [x, 0, z]  # Look at point in front of the robot    
 
-    # look_at = [pos[0], 0, pos[2] + 5 * rz]
-    # camera_pos = [pos[0], ry + 0.1, pos[2] + rz / 3]
-    # camera_pos = cam_pos(pos[0],0,pos[2], ry,rz)[2]
+    print("Robot position at frame", i, ":", pos)
     print("Camera position:", camera_pos)
     print("Look at position:", look_at)
+
+    
+    # bounding boxes 
     # Project objects onto the camera view
     
+    visible_obj = []
     for obj in object_coords:
         # Calculate the center position of the bounding box
         pnt = [obj["pos1"][i] - (obj["pos1"][i] - obj["pos0"][i]) / 2 for i in range(3)]
-        print("Object position:", pnt)
         screen_coords, rel_pos = project_point(pnt,camera_pos, look_at, camera_fov, 600, 450)
         if screen_coords:
-            print(f"Object {obj['type']} at frame {i:03d} on screen at:", screen_coords, rel_pos)
+            print(f"Object {obj['type']}, {pnt} at frame {i:03d} on screen at:", screen_coords, rel_pos)
+            visible_obj.append({"obj":obj["type"], "coords:":screen_coords})
         else:
-            print(f"Object {obj['type']} at frame {i:03d} not visible", camera_pos)
-    
+            print(f"Object {obj['type']}, {pnt} at frame {i:03d} not visible")
+    with open(os.path.join(output_dir, f"visible_objects_{i:03d}.txt"), "w") as f:
+        json.dump(visible_obj,f)
+
+    # Open the rendered image
+    img_path = os.path.join(output_dir, f"robot_{i:03d}.png")
+    img = Image.open(img_path)
+    img = img.convert("RGB")
+    img_width, img_height = img.size
+
+    # Draw bounding boxes on the image
+
+    draw = ImageDraw.Draw(img)
+    for obj in visible_obj:
+        coords = obj["coords:"]
+        x, y = coords
+        box_size = 10  # Size of the bounding box
+        draw.rectangle(
+            [x - box_size, y - box_size, x + box_size, y + box_size],
+            outline="red",
+            width=2,
+        )
+        draw.text((x + box_size, y - box_size), obj["obj"], fill="red")
+
+    # Save the annotated image
+    annotated_img_path = os.path.join(output_dir, f"robot_ann{i:03d}.png")
+    img.save(annotated_img_path)
+        
 
 print("Rendering complete. Frames saved to:", output_dir)
