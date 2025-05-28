@@ -15,7 +15,7 @@ import sys
 MODEL_PATH = "best_model_regions_softmax.keras"
 IMAGE_SIZE = 160
 OUTPUT_DIR = "verify"
-THRESHOLD = 0.3  # Prediction confidence threshold
+THRESHOLD = 0.4  # Prediction confidence threshold
 
 if len(sys.argv) > 1:
     modelSource = sys.argv[1]
@@ -29,7 +29,7 @@ else:
     imgSource = INPUT_PATH
 
 
-GRID = 5
+GRID = 4
 IMAGE_SIZE = 160
 
 def load_dataset(image_dir, classes, cells, regions):

@@ -183,7 +183,7 @@ def get_camera_basis(cam_pos, look_at):
     return right, up, forward
 
 
-def project_point(point, cam_pos, look_at, fov_deg, img_width, img_height):
+def project_point_(point, cam_pos, look_at, fov_deg, img_width, img_height):
     """
     Projects a 3D world-space point onto 2D image space using pinhole projection.
     Returns 2D screen coordinates and camera-space coordinates (or None if not visible).
@@ -219,7 +219,7 @@ def project_point(point, cam_pos, look_at, fov_deg, img_width, img_height):
     return (x_screen, y_screen), p_cam
 
 
-def estimate_bounding_box(
+def estimate_bounding_box_(
     center, size, cam_pos, look_at, fov_deg, img_width, img_height
 ):
     dx, dy, dz = size[0] / 2, size[1] / 2, size[2] / 2
@@ -259,12 +259,77 @@ def estimate_bounding_box(
     # x,y,w,h
     return [int(x_min), int(y_min), int(x_max - x_min), int(y_max - y_min)]
 
+#######
+
+def project_point(point, cam_pos, look_at, fov_deg, img_width, img_height):
+    right, up, forward = get_camera_basis(cam_pos, look_at)
+    R = np.stack([right, up, forward], axis=1)
+    p_world = np.array(point) - np.array(cam_pos)
+    p_cam = np.dot(R.T, p_world)
+
+    if p_cam[2] <= 0:
+        return None, p_cam
+
+    fov_rad = np.radians(fov_deg)
+    aspect = img_width / img_height
+
+    x_ndc = p_cam[0] / (p_cam[2] * np.tan(fov_rad / 2))
+    y_ndc = p_cam[1] / (p_cam[2] * np.tan(fov_rad / 2) / aspect)
+
+    x_screen = int((x_ndc + 1) * img_width / 2)
+    y_screen = int((1 - y_ndc) * img_height / 2)
+
+    if not (0 <= x_screen < img_width and 0 <= y_screen < img_height):
+        return None, p_cam
+
+    return (x_screen, y_screen), p_cam
+
+def estimate_bounding_box(center, size, cam_pos, look_at, fov_deg, img_width, img_height, pad=2):
+    dx, dy, dz = size[0] / 2, size[1] / 2, size[2] / 2
+    corners = [
+        [center[0] + sx * dx, center[1] + sy * dy, center[2] + sz * dz]
+        for sx in [-1, 1] for sy in [-1, 1] for sz in [-1, 1]
+    ]
+
+    fov_rad = np.radians(fov_deg)
+    aspect = img_width / img_height
+    projected_points = []
+
+    for c in corners:
+        _, p_cam = project_point(c, cam_pos, look_at, fov_deg, img_width, img_height)
+        if p_cam[2] > 0:
+            x_ndc = p_cam[0] / (p_cam[2] * np.tan(fov_rad / 2))
+            y_ndc = p_cam[1] / (p_cam[2] * np.tan(fov_rad / 2) / aspect)
+            x_screen = int((x_ndc + 1) * img_width / 2)
+            y_screen = int((1 - y_ndc) * img_height / 2)
+            projected_points.append((x_screen, y_screen))
+
+    if not projected_points:
+        return None  # All corners behind the camera
+
+    xs, ys = zip(*projected_points)
+    x_min, x_max = min(xs) - pad, max(xs) + pad
+    y_min, y_max = min(ys) - pad, max(ys) + pad
+
+    # Clamp to screen
+    x_min = max(0, x_min)
+    y_min = max(0, y_min)
+    x_max = min(img_width, x_max)
+    y_max = min(img_height, y_max)
+
+    if x_min >= x_max or y_min >= y_max:
+        return None  # Outside screen entirely
+
+    return [int(x_min), int(y_min), int(x_max - x_min), int(y_max - y_min)]
+
+
+
 def lookat_point(pos):
     """
     Returns a camera object that looks at a specified point.
     cam_pos: camera position in world
     """
-    cam_rot = 3 # optional speedup 
+    cam_rot = 1 # optional speedup 
     angle = pos[3]*cam_rot  # angle in degrees
     cam_dz = np.cos(np.radians(-angle))
     cam_dx = np.sin(np.radians(-angle))
@@ -332,8 +397,8 @@ def create_scene(t, duration, view="robot"):
             # ),
             # robot
             robot_union(pos[0], pos[2], rx, ry, rz, angle),
-            pointer,
-            antenna,
+            #pointer,
+            #antenna,
             ## body
             # Box([pos[0] - rx/2, 0, pos[2] - rz/2], [pos[0] + rx/2, ry, pos[2] + rz/2], color([0.2, 0.2, 0.2])),
             # camera mount

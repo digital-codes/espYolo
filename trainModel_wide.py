@@ -28,7 +28,7 @@ import matplotlib.patches as patches
 import layoutUtils as layout
 
 IMAGE_SIZE = 160 
-GRID = 5
+GRID = 4
 
 cells = layout.define_cells(IMAGE_SIZE, GRID)
 regions = layout.define_regions(GRID)
