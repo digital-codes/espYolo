@@ -336,7 +336,14 @@ for i in range(frames):
     visible_obj = []
     for obj in object_coords:
         # Calculate the center position of the bounding box
-        pnt = [obj["pos1"][i] - (obj["pos1"][i] - obj["pos0"][i]) / 2 for i in range(3)]
+        if obj["type"] == "box":
+            pnt = [obj["pos1"][i] - (obj["pos1"][i] - obj["pos0"][i]) / 2 for i in range(3)]
+        elif obj["type"] == "cone":
+            pnt = [obj["pos0"][i] + (obj["pos1"][i] - obj["pos0"][i]) / 2 for i in range(3)]
+        elif obj["type"] == "sphere":
+            # For sphere, use the center position
+            pnt = obj["pos0"]  # Sphere position is already the center
+        # pnt = [obj["pos1"][i] - (obj["pos1"][i] - obj["pos0"][i]) / 2 for i in range(3)]
         screen_coords, rel_pos = project_point(pnt,camera_pos, look_at, camera_fov, 600, 450)
         if screen_coords:
             print(f"Object {obj['type']}, {pnt} at frame {i:03d} on screen at:", screen_coords, rel_pos)
