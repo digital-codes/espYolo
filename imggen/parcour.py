@@ -668,6 +668,13 @@ for i in range(frames):
             if earlier_obj["bounding_box"] is None:
                 continue
             earlier_bb = earlier_obj["bounding_box"]
+
+            print(
+                f"Earlier object {earlier_obj['class']} bounding box: {earlier_bb}"
+            )
+            print(f"Current object {obj['class']} bounding box: {bb}")
+
+            # check for disjunct
             if bb[0] + bb[2] <= earlier_bb[0]:
                 # object completely left to earlier object
                 continue
@@ -680,69 +687,62 @@ for i in range(frames):
             if bb[1] >= earlier_bb[1] + earlier_bb[3]:
                 # object completely below to earlier object
                 continue
-            # Check for overlap
-            x_min = max(bb[0], earlier_bb[0])
-            y_min = max(bb[1], earlier_bb[1])
-            x_max = min(bb[0] + bb[2], earlier_bb[0] + earlier_bb[2])
-            y_max = min(bb[1] + bb[3], earlier_bb[1] + earlier_bb[3])
-            # more checks
 
-            if x_min < x_max and y_min < y_max :  # Overlap exists
-                print("Clipping bounding box for overlap with earlier object")
+            # Check overlap. if earlier object is inside with one or both dimensions, continue
+            # otherwise, we would need to split the bounding box
+            if (
+                ((earlier_bb[0] >= bb[0])
+                and (earlier_bb[0] + earlier_bb[1]) <= (bb[1] + bb[3]))
+                or ((earlier_bb[1] >= bb[1]) and (earlier_bb[1] + earlier_bb[3] <= bb[1] + bb[3]))
+            ):
+                # earlier object is completely inside current object, continue
                 print(
-                    f"Earlier object {earlier_obj['class']} bounding box: {earlier_bb}"
+                    f"Earlier object {earlier_obj['class']} inside current object {obj['class']}, skipping overlap check"
                 )
-                print(f"Current object {obj['class']} bounding box: {bb}")
-                # Check if the object is completely inside the earlier object
-                if (
-                    bb[0] >= earlier_bb[0]
-                    and bb[1] >= earlier_bb[1]
-                    and bb[0] + bb[2] <= earlier_bb[0] + earlier_bb[2]
-                    and bb[1] + bb[3] <= earlier_bb[1] + earlier_bb[3]
-                ):
-                    print(
-                        f"Object {obj['class']} completely inside earlier object, dropping"
-                    )
-                    obj["bounding_box"] = None
-                    break
+                continue
 
-                # Clip partially based on overlap
-                # left
-                if bb[0] < earlier_bb[0]:
-                    if bb[0] + bb[2] <= earlier_bb[0]:
-                        bb[2] = earlier_bb[0] - bb[0]
-                # top
-                if bb[1] < earlier_bb[1]:
-                    if bb[1] + bb[3] <= earlier_bb[1]:
-                        bb[1] = earlier_bb[1] - bb[1]
-                # right
-                if bb[0] + bb[2] > earlier_bb[0] + earlier_bb[2]:
-                    if bb[0] <= earlier_bb[0] + earlier_bb[2]:
-                        temp = bb[0] + bb[2]  # right border
-                        bb[0] = earlier_bb[0] + earlier_bb[2]  # replace
-                        bb[2] = temp - bb[0]
-                # bottom
-                if bb[1] + bb[3] > earlier_bb[1] + earlier_bb[3]:
-                    if bb[1] <= earlier_bb[1] + earlier_bb[3]:
-                        temp = bb[1] + bb[3]
-                        bb[1] = earlier_bb[1] + earlier_bb[3]
-                        bb[3] = temp - bb[1]
-
-                # Ensure width and height remain valid
-                bb[2] = max(0, bb[2])
-                bb[3] = max(0, bb[3])
-
+            # Check if the object is completely inside the earlier object
+            if (
+                bb[0] >= earlier_bb[0]
+                and bb[1] >= earlier_bb[1]
+                and bb[0] + bb[2] <= earlier_bb[0] + earlier_bb[2]
+                and bb[1] + bb[3] <= earlier_bb[1] + earlier_bb[3]
+            ):
                 print(
-                    f"new width: {bb[2]}, new height: {bb[3]}, old width,height: {bb_width}, {bb_height}"
+                    f"Object {obj['class']} completely inside earlier object, dropping"
                 )
+                obj["bounding_box"] = None
+                break
 
-                # Drop item if remaining width or height is smaller than 40% of original
-                cutoff = 0.3
-                if bb[2] < cutoff * bb_width or bb[3] < cutoff * bb_height:
-                    print(
-                        f"Object {obj['class']} bounding box too small after overlap check, dropping"
-                    )
-                    obj["bounding_box"] = None
+            print("Clipping bounding box for overlap with earlier object")
+
+            # Calculate overlap area
+            if bb[0] < earlier_bb[0]:
+                bb[2] = earlier_bb[0] - bb[0] # cut right
+            else:
+                temp = bb[0] + bb[2]  # right border
+                bb[0] = earlier_bb[0] + earlier_bb[2] # cut left
+                bb[2] = temp - (earlier_bb[1] + earlier_bb[3])
+
+            if bb[1] < earlier_bb[1]:
+                bb[3] = earlier_bb[1] - bb[1] # cut bottom
+            else:
+                temp = bb[1] + bb[3]
+                bb[1] = earlier_bb[1] + earlier_bb[3]  # cut top
+                bb[3] = temp - bb[1]
+
+
+            print(
+                f"new width: {bb[2]}, new height: {bb[3]}, old width,height: {bb_width}, {bb_height}"
+            )
+            
+            # Drop item if remaining width or height is smaller than 40% of original
+            cutoff = 0.3
+            if bb[2] < cutoff * bb_width or bb[3] < cutoff * bb_height:
+                print(
+                    f"Object {obj['class']} bounding box too small after overlap check, dropping"
+                )
+                obj["bounding_box"] = None
 
     for obj in visible_obj:
         if obj["bounding_box"] is None:
