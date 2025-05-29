@@ -286,7 +286,7 @@ def estimate_bounding_box(center, size, cam_pos, look_at, fov_deg, img_width, im
     if x_max - x_min < cutoff_x or y_max - y_min < cutoff_y:
         return None, None
         
-
+    # return x,y,w,h
     return [int(x_min), int(y_min), int(x_max - x_min), int(y_max - y_min)],p_cam
 
 
@@ -393,6 +393,8 @@ duration = 4.0
 fps = 15
 frames = int(duration * fps)
 
+img_width = 600
+img_height = 450
 
 for i in range(frames):
     t = i / fps
@@ -401,8 +403,9 @@ for i in range(frames):
 
         scene.render(
             os.path.join(output_dir, f"{view}_{i:03d}.png"),
-            width=600,
-            height=450,
+            width=img_width,
+            height=img_height,
+            quality=9,
             antialiasing=0.01,
         )
 
@@ -449,32 +452,100 @@ for i in range(frames):
                 screen_coords,
                 rel_pos,
             )
-            visible_obj.append(
-                {"type": obj["type"], "center": pnt, "coords:": screen_coords, "size": size}
+            bb, dist = estimate_bounding_box(
+                pnt, size, camera_pos, look_at, camera_fov, img_width, img_height
             )
-        else:
-            print(f"Object {obj['type']}, {pnt} at frame {i:03d} not visible")
+            if bb is not None:
+                # print(f"Object {obj['type']} bounding box at frame {i:03d}:", bb,dist)
+                visible_obj.append(
+                    {"type": obj["type"], "center": pnt, "coords:": screen_coords, "size": size, "bounding_box": bb, "distance": dist}
+                )
+        #else:
+        #    print(f"Object {obj['type']}, {pnt} at frame {i:03d} not visible")
 
     # Open the rendered image
     img_path = os.path.join(output_dir, f"robot_{i:03d}.png")
     img = Image.open(img_path)
     img = img.convert("RGB")
-    img_width, img_height = img.size
 
     # Draw bounding boxes on the image
 
     draw = ImageDraw.Draw(img)
     annotations = []
+    visible_obj.sort(key=lambda obj: obj["distance"][2] if obj["distance"] is not None else float('inf'))
+    for idx, obj in enumerate(visible_obj):
+        if obj["bounding_box"] is None:
+            continue
+        bb = obj["bounding_box"]
+        bb_width = bb[2]
+        bb_height = bb[3]
+        print(f"Processing object {obj['type']} with bounding box {bb} at frame {i:03d}")
+        for earlier_obj in visible_obj[:idx]:
+            if earlier_obj["bounding_box"] is None:
+                continue
+            earlier_bb = earlier_obj["bounding_box"]
+            # Check for overlap
+            x_min = max(bb[0], earlier_bb[0])
+            y_min = max(bb[1], earlier_bb[1])
+            x_max = min(bb[0] + bb[2], earlier_bb[0] + earlier_bb[2])
+            y_max = min(bb[1] + bb[3], earlier_bb[1] + earlier_bb[3])
+
+            if x_min < x_max and y_min < y_max:  # Overlap exists
+                print("Clipping bounding box for overlap with earlier object")
+                print(f"Earlier object {earlier_obj['type']} bounding box: {earlier_bb}")
+                print(f"Current object {obj['type']} bounding box: {bb}")
+                # Check if the object is completely inside the earlier object
+                if (
+                    bb[0] >= earlier_bb[0]
+                    and bb[1] >= earlier_bb[1]
+                    and bb[0] + bb[2] <= earlier_bb[0] + earlier_bb[2]
+                    and bb[1] + bb[3] <= earlier_bb[1] + earlier_bb[3]
+                ):
+                    print(f"Object {obj['type']} completely inside earlier object, dropping")
+                    obj["bounding_box"] = None
+                    break
+                
+                # Clip partially based on overlap
+                # left
+                if bb[0] < earlier_bb[0]: 
+                    if bb[0] + bb[2] <= earlier_bb[0]:
+                        bb[2] = earlier_bb[0] - bb[0] 
+                # top
+                if bb[1] < earlier_bb[1]: 
+                    if bb[1] + bb[3] <= earlier_bb[1]:
+                        bb[1] = earlier_bb[1] - bb[1] 
+                # right
+                if bb[0] + bb[2] > earlier_bb[0] + earlier_bb[2]:
+                    if bb[0] <= earlier_bb[0] + earlier_bb[2]:
+                        temp = bb[0] + bb[2] # right border
+                        bb[0] = earlier_bb[0] + earlier_bb[2] # replace
+                        bb[2] = temp - bb[0]
+                # bottom
+                if bb[1] + bb[3] > earlier_bb[1] + earlier_bb[3]:
+                    if bb[1] <= earlier_bb[1] + earlier_bb[3]:
+                        temp = bb[1] + bb[3]
+                        bb[1] = earlier_bb[1] + earlier_bb[3]
+                        bb[3] = temp - bb[1]
+
+
+                # Ensure width and height remain valid
+                bb[2] = max(0, bb[2])
+                bb[3] = max(0, bb[3])
+              
+                print(f"new width: {bb[2]}, new height: {bb[3]}, old width,height: {bb_width}, {bb_height}")
+
+                # Drop item if remaining width or height is smaller than 40% of original
+                cutoff = 0.4
+                if bb[2] < cutoff * bb_width or bb[3] < cutoff * bb_height:
+                    print(f"Object {obj['type']} bounding box too small after overlap check, dropping")
+                    obj["bounding_box"] = None
+            
     for obj in visible_obj:
-        coords = obj["coords:"]
-        x, y = coords
-        bbox = (x - 10, y - 10, x + 10, y + 10)  # Size of the bounding box
-        bb, dist = estimate_bounding_box(
-            obj["center"], obj["size"], camera_pos, look_at, camera_fov, img_width, img_height
-        )
-        if bb is None:
+        if obj["bounding_box"] is None:
             print(f"Object {obj['type']} bounding box not visible")
         else:
+            bb = obj["bounding_box"]
+            dist = obj["distance"]
             bbox = (bb[0], bb[1], bb[0] + bb[2], bb[1] + bb[3])
             print(f"Object {obj['type']} bounding box at frame {i:03d}:", bbox)
             draw.rectangle(
