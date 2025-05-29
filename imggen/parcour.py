@@ -35,58 +35,179 @@ rx, ry, rz = 0.05, 0.06, 0.08  # Robot dimensions
 camera_fov = 43.6  # horizontal FOV ~ matching 2.32 mm lens on ~1 mm sensor
 
 object_coords = [
-    {"class":"box","type": "box", "pos0": [0.2, 0, 0.2], "pos1": [0.24, 0.04, 0.24],"color":[1, 0.6, 0.5]},  # Box
     {
-        "class":"person",
+        "class": "box",
+        "type": "box",
+        "pos0": [0.2, 0, 0.2],
+        "pos1": [0.24, 0.04, 0.24],
+        "color": [1, 0.6, 0.5],
+    },  # Box
+    {
+        "class": "person",
         "type": "cone",
         "pos0": [0.1, 0, 0.1],
         "r0": 0.03,
         "pos1": [0.1, 0.08, 0.1],
         "r1": 0,
-        "color": [1, 0.8, 0]
+        "color": [1, 0.8, 0],
     },  # Cone
-    {"class":"ball","type": "sphere", "pos0": [-0.2, 0.04, 0.25], "r0": 0.04,"color":[0.4, 0.6, 1]},  # Sphere
-
-    {"class":"fence","type": "box", "pos0": [-.5, 0, -.5], "pos1": [-.5, 0.02, -.25],"color":[1, 0.1, 0.1]},  # fence
-    {"class":"fence","type": "box", "pos0": [-.5, 0, -.25], "pos1": [-.5, 0.02,  0],"color":[1, 0.1, 0.1]},  # fence
-
-    {"class":"fence","type": "box", "pos0": [-.5, 0,   0], "pos1": [-.5, 0.02, .25],"color":[1, 0.1, 0.1]},  # fence
-    {"class":"fence","type": "box", "pos0": [-.5, 0, .25], "pos1": [-.5, 0.02, .5],"color":[1, 0.1, 0.1]},  # fence
-
-    {"class":"fence","type": "box", "pos0": [-.5, 0, .5], "pos1": [-.25, 0.02, .5],"color":[1, 0.1, 0.1]},  # fence
-    {"class":"fence","type": "box", "pos0": [-.25, 0, .5], "pos1": [ 0, 0.02, .5],"color":[1, 0.1, 0.1]},  # fence
-
-    {"class":"fence","type": "box", "pos0": [  0, 0, .5], "pos1": [.25, 0.02, .5],"color":[1, 0.1, 0.1]},  # fence
-    {"class":"fence","type": "box", "pos0": [.25, 0, .5], "pos1": [.5, 0.02, .5],"color":[1, 0.1, 0.1]},  # fence
-
-    {"class":"fence","type": "box", "pos0": [.5, 0, .5], "pos1": [.5, 0.02, .25],"color":[1, 0.1, 0.1]},  # fence
-    {"class":"fence","type": "box", "pos0": [.5, 0, .25], "pos1": [.5, 0.02,   0],"color":[1, 0.1, 0.1]},  # fence
-
-    {"class":"fence","type": "box", "pos0": [.5, 0,  0], "pos1": [.5, 0.02, -.25],"color":[1, 0.1, 0.1]},  # fence
-    {"class":"fence","type": "box", "pos0": [.5, 0, -.25], "pos1": [.5, 0.02, -.5],"color":[1, 0.1, 0.1]},  # fence
-
-    {"class":"fence","type": "box", "pos0": [.5, 0, -.5], "pos1": [.25, 0.02, -.5],"color":[1, 0.1, 0.1]},  # fence
-    {"class":"fence","type": "box", "pos0": [.25, 0, -.5], "pos1": [  0, 0.02, -.5],"color":[1, 0.1, 0.1]},  # fence
-
-    {"class":"fence","type": "box", "pos0": [ 0, 0, -.5], "pos1": [-.25, 0.02, -.5],"color":[1, 0.1, 0.1]},  # fence
-    {"class":"fence","type": "box", "pos0": [-.25, 0, -.5], "pos1": [-.5, 0.02, -.5],"color":[1, 0.1, 0.1]},  # fence
-    
+    {
+        "class": "ball",
+        "type": "sphere",
+        "pos0": [-0.2, 0.04, 0.25],
+        "r0": 0.04,
+        "color": [0.4, 0.6, 1],
+    },  # Sphere
+    {
+        "class": "fence",
+        "type": "box",
+        "pos0": [-0.5, 0, -0.5],
+        "pos1": [-0.5, 0.02, -0.25],
+        "color": [1, 0.1, 0.1],
+    },  # fence
+    {
+        "class": "fence",
+        "type": "box",
+        "pos0": [-0.5, 0, -0.25],
+        "pos1": [-0.5, 0.02, 0],
+        "color": [1, 0.1, 0.1],
+    },  # fence
+    {
+        "class": "fence",
+        "type": "box",
+        "pos0": [-0.5, 0, 0],
+        "pos1": [-0.5, 0.02, 0.25],
+        "color": [1, 0.1, 0.1],
+    },  # fence
+    {
+        "class": "fence",
+        "type": "box",
+        "pos0": [-0.5, 0, 0.25],
+        "pos1": [-0.5, 0.02, 0.5],
+        "color": [1, 0.1, 0.1],
+    },  # fence
+    {
+        "class": "fence",
+        "type": "box",
+        "pos0": [-0.5, 0, 0.5],
+        "pos1": [-0.25, 0.02, 0.5],
+        "color": [1, 0.1, 0.1],
+    },  # fence
+    {
+        "class": "fence",
+        "type": "box",
+        "pos0": [-0.25, 0, 0.5],
+        "pos1": [0, 0.02, 0.5],
+        "color": [1, 0.1, 0.1],
+    },  # fence
+    {
+        "class": "fence",
+        "type": "box",
+        "pos0": [0, 0, 0.5],
+        "pos1": [0.25, 0.02, 0.5],
+        "color": [1, 0.1, 0.1],
+    },  # fence
+    {
+        "class": "fence",
+        "type": "box",
+        "pos0": [0.25, 0, 0.5],
+        "pos1": [0.5, 0.02, 0.5],
+        "color": [1, 0.1, 0.1],
+    },  # fence
+    {
+        "class": "fence",
+        "type": "box",
+        "pos0": [0.5, 0, 0.5],
+        "pos1": [0.5, 0.02, 0.25],
+        "color": [1, 0.1, 0.1],
+    },  # fence
+    {
+        "class": "fence",
+        "type": "box",
+        "pos0": [0.5, 0, 0.25],
+        "pos1": [0.5, 0.02, 0],
+        "color": [1, 0.1, 0.1],
+    },  # fence
+    {
+        "class": "fence",
+        "type": "box",
+        "pos0": [0.5, 0, 0],
+        "pos1": [0.5, 0.02, -0.25],
+        "color": [1, 0.1, 0.1],
+    },  # fence
+    {
+        "class": "fence",
+        "type": "box",
+        "pos0": [0.5, 0, -0.25],
+        "pos1": [0.5, 0.02, -0.5],
+        "color": [1, 0.1, 0.1],
+    },  # fence
+    {
+        "class": "fence",
+        "type": "box",
+        "pos0": [0.5, 0, -0.5],
+        "pos1": [0.25, 0.02, -0.5],
+        "color": [1, 0.1, 0.1],
+    },  # fence
+    {
+        "class": "fence",
+        "type": "box",
+        "pos0": [0.25, 0, -0.5],
+        "pos1": [0, 0.02, -0.5],
+        "color": [1, 0.1, 0.1],
+    },  # fence
+    {
+        "class": "fence",
+        "type": "box",
+        "pos0": [0, 0, -0.5],
+        "pos1": [-0.25, 0.02, -0.5],
+        "color": [1, 0.1, 0.1],
+    },  # fence
+    {
+        "class": "fence",
+        "type": "box",
+        "pos0": [-0.25, 0, -0.5],
+        "pos1": [-0.5, 0.02, -0.5],
+        "color": [1, 0.1, 0.1],
+    },  # fence
 ]
 
-# Oval middle lines
-object_coords.extend([
-    {"class": "line", "type": "box", "pos0": [  0, 0, -.40], "pos1": [ .25 ,.02, -.4], "color": [1, 1, 1]}, 
-    {"class": "line", "type": "box", "pos0": [.25, 0, -.40], "pos1": [ .40,.02, -.20], "color": [1, 1, 1]}, 
-    {"class": "line", "type": "box", "pos0": [.40, 0, -.20], "pos1": [ .40 ,.02,   0], "color": [1, 1, 1]}, 
-    {"class": "line", "type": "box", "pos0": [.40, 0,    0], "pos1": [ .25 ,.02, .20], "color": [1, 1, 1]}, 
-    {"class": "line", "type": "box", "pos0": [.25, 0,  .20], "pos1": [  0 ,.02,  .40], "color": [1, 1, 1]}, 
-    {"class": "line", "type": "box", "pos0": [ .0, 0,  .40], "pos1": [-.25,.02,  .40], "color": [1, 1, 1]}, 
-    {"class": "line", "type": "box", "pos0": [-.25, 0, .40], "pos1": [-.40,.02,  .40], "color": [1, 1, 1]}, 
-    {"class": "line", "type": "box", "pos0": [-.40, 0, .40], "pos1": [-.40,.02,  .25], "color": [1, 1, 1]}, 
-    {"class": "line", "type": "box", "pos0": [-.40, 0, .25], "pos1": [-.25,.02,   .0], "color": [1, 1, 1]}, 
-    {"class": "line", "type": "box", "pos0": [-.25, 0,  .0], "pos1": [-.25,.02, -.25], "color": [1, 1, 1]}, 
-    {"class": "line", "type": "box", "pos0": [-.25, 0,-.25], "pos1": [  0,.02, -.40], "color": [1, 1, 1]}, 
-])
+
+def oval_track_segments(
+    radius=0.25, width=0.02, gap=0.01, height=0.001, segments=60
+):
+    objects = []
+    length = 2 * np.pi * radius / segments - gap  # Length of each segment
+    for i in range(segments):
+        theta1 = 2 * np.pi * i / segments
+        # Outer segment
+        x1, z1 = radius * np.cos(theta1), radius * np.sin(theta1)
+        objects.append(
+            {
+                "class": "track",
+                "type": "box",
+                "pos0": [x1 - width / 2, height, z1 - length / 2],
+                "pos1": [x1 + width / 2, height, z1 + length / 2],
+                "color": [1, 0.1, 0.1],
+                "rotate": [0, 0, 0],
+            },
+        )
+    return objects
+
+
+trackLines = oval_track_segments()
+
+for t in trackLines:
+    object_coords.append(
+        {
+            "class": "track",
+            "type": "box",
+            "rot": t.get("rotate", [0, 0, 0]),
+            "pos0": t["pos0"],
+            "pos1": t["pos1"],
+            "color": [1, 1, 1],
+        }
+    )
 
 
 objects = []
@@ -121,7 +242,7 @@ side_camera = Camera(
 
 
 def robot_position(t, duration):
-    angle = 2 * np.pi * (1.5 * t / duration)  
+    angle = 2 * np.pi * (1.5 * t / duration)
     return [a * np.cos(angle), 0, b * np.sin(angle), np.degrees(angle)]
 
 
@@ -184,25 +305,6 @@ def robot_union(x, z, rx=0.03, ry=0.025, rz=0.05, rot=0):
     )
 
 
-def oval_track_segments(radius=0.25, width=0.02, gap=0.005, height=0.001, segments=60):
-    objects = []
-    length = 2 * np.pi * radius / segments - gap  # Length of each segment
-    for i in range(segments):
-        theta1 = 2 * np.pi * i / segments
-        # Outer segment
-        x1, z1 = radius * np.cos(theta1), radius * np.sin(theta1)
-        objects.append(
-            Box(
-                [x1 - width / 2, height, z1 - length / 2],
-                [x1 + width / 2, height, z1 + length / 2],
-                "rotate",
-                [0, 0, 0],
-                color([1, 1, 1]),
-            )
-        )
-    return objects
-
-
 def get_camera_basis(cam_pos, look_at):
     """
     Computes the camera's coordinate system (right, up, forward).
@@ -261,7 +363,6 @@ def project_point_(point, cam_pos, look_at, fov_deg, img_width, img_height):
     return (x_screen, y_screen), p_cam
 
 
-
 def project_point(point, cam_pos, look_at, fov_deg, img_width, img_height):
     right, up, forward = get_camera_basis(cam_pos, look_at)
     R = np.stack([right, up, forward], axis=1)
@@ -281,16 +382,21 @@ def project_point(point, cam_pos, look_at, fov_deg, img_width, img_height):
     y_screen = int((1 - y_ndc) * img_height / 2)
 
     # don't do this here. clip later!
-    #if not (0 <= x_screen < img_width and 0 <= y_screen < img_height):
+    # if not (0 <= x_screen < img_width and 0 <= y_screen < img_height):
     #    return None, p_cam
 
     return (x_screen, y_screen), p_cam
 
-def estimate_bounding_box(center, size, cam_pos, look_at, fov_deg, img_width, img_height, pad=2):
+
+def estimate_bounding_box(
+    center, size, cam_pos, look_at, fov_deg, img_width, img_height, pad=2
+):
     dx, dy, dz = size[0] / 2, size[1] / 2, size[2] / 2
     corners = [
         [center[0] + sx * dx, center[1] + sy * dy, center[2] + sz * dz]
-        for sx in [-1, 1] for sy in [-1, 1] for sz in [-1, 1]
+        for sx in [-1, 1]
+        for sy in [-1, 1]
+        for sz in [-1, 1]
     ]
 
     fov_rad = np.radians(fov_deg)
@@ -318,19 +424,17 @@ def estimate_bounding_box(center, size, cam_pos, look_at, fov_deg, img_width, im
     y_min = max(0, y_min)
     x_max = min(img_width, x_max)
     y_max = min(img_height, y_max)
-    
 
     if x_min >= x_max or y_min >= y_max:
         return None, None  # Outside screen entirely
-    
-    cutoff_x = img_width // 20 
-    cutoff_y = img_height // 20
+
+    cutoff_x = img_width // 40
+    cutoff_y = img_height // 30
     if x_max - x_min < cutoff_x or y_max - y_min < cutoff_y:
         return None, None
-        
-    # return x,y,w,h
-    return [int(x_min), int(y_min), int(x_max - x_min), int(y_max - y_min)],p_cam
 
+    # return x,y,w,h
+    return [int(x_min), int(y_min), int(x_max - x_min), int(y_max - y_min)], p_cam
 
 
 def lookat_point(pos):
@@ -338,8 +442,8 @@ def lookat_point(pos):
     Returns a camera object that looks at a specified point.
     cam_pos: camera position in world
     """
-    cam_rot = 4 # optional speedup 
-    angle = pos[3]*cam_rot  # angle in degrees
+    cam_rot = 4  # optional speedup
+    angle = pos[3] * cam_rot  # angle in degrees
     cam_dz = np.cos(np.radians(-angle))
     cam_dx = np.sin(np.radians(-angle))
     x = pos[0] + cam_dx * 5 * rz
@@ -353,7 +457,6 @@ def create_scene(t, duration, view="robot"):
     look_at = lookat_point(pos)  # Look at point in front of the robot
     angle = pos[3]  # angle in degrees
 
-
     # print("Camera position:", camera_pos)
     # def cam_pos(x,y,z,ry,rz):
 
@@ -364,7 +467,7 @@ def create_scene(t, duration, view="robot"):
     elif view == "side":
         camera = side_camera
 
-    track = oval_track_segments()
+    #track = oval_track_segments()
 
     pointer = Cylinder(
         [camera_pos[0], camera_pos[1] + 0.005, camera_pos[2]],  # camera_pos,
@@ -406,8 +509,8 @@ def create_scene(t, duration, view="robot"):
             # ),
             # robot
             robot_union(pos[0], pos[2], rx, ry, rz, angle),
-            #pointer,
-            #antenna,
+            # pointer,
+            # antenna,
             ## body
             # Box([pos[0] - rx/2, 0, pos[2] - rz/2], [pos[0] + rx/2, ry, pos[2] + rz/2], color([0.2, 0.2, 0.2])),
             # camera mount
@@ -418,7 +521,7 @@ def create_scene(t, duration, view="robot"):
             # Arena floor
             Box([-0.5, -0.01, -0.5], [0.5, 0, 0.5], color([0.9, 0.9, 0.0])),
             # Oval track (50 cm diameter, 2 cm width)
-            *track,
+            #*track,
             # objects
             *objects,
             # Box([0.2, 0, 0.2], [0.25, 0.05, 0.25], color([1, 0.6, 0.5])),
@@ -440,7 +543,7 @@ img_height = 450
 
 for i in range(frames):
     t = i / fps
-    for view in ["robot"]: #, "bird", "side"]:
+    for view in ["robot"]:  # , "bird", "side"]:
         scene = create_scene(t, duration, view)
 
         scene.render(
@@ -458,10 +561,9 @@ for i in range(frames):
     look_at = lookat_point(pos)  # Look at point in front of the robot
     angle = pos[3]  # angle in degrees
 
-
-    #print("Robot position at frame", i, ":", pos)
-    #print("Camera position:", camera_pos)
-    #print("Look at position:", look_at)
+    # print("Robot position at frame", i, ":", pos)
+    # print("Camera position:", camera_pos)
+    # print("Look at position:", look_at)
 
     # bounding boxes
     # Project objects onto the camera view
@@ -475,15 +577,16 @@ for i in range(frames):
             ]
             size = [(obj["pos1"][i] - obj["pos0"][i]) for i in range(3)]
         elif obj["type"] == "cone":
-            pnt = [obj["pos0"][0],
+            pnt = [
+                obj["pos0"][0],
                 obj["pos1"][1] - (obj["pos1"][1] - obj["pos0"][1]) / 2,
-                obj["pos0"][2]
+                obj["pos0"][2],
             ]
-            size = [obj["r0"]*2,(obj["pos1"][1] - obj["pos0"][1]),obj["r0"]*2]
+            size = [obj["r0"] * 2, (obj["pos1"][1] - obj["pos0"][1]), obj["r0"] * 2]
         elif obj["type"] == "sphere":
             # For sphere, use the center position
             pnt = obj["pos0"]  # Sphere position is already the center
-            size = [obj["r0"]*2 for i in range(3)]
+            size = [obj["r0"] * 2 for i in range(3)]
         # pnt = [obj["pos1"][i] - (obj["pos1"][i] - obj["pos0"][i]) / 2 for i in range(3)]
         screen_coords, rel_pos = project_point(
             pnt, camera_pos, look_at, camera_fov, 600, 450
@@ -500,9 +603,17 @@ for i in range(frames):
             if bb is not None:
                 # print(f"Object {obj['type']} bounding box at frame {i:03d}:", bb,dist)
                 visible_obj.append(
-                    {"class":obj["class"], "type": obj["type"], "center": pnt, "coords:": screen_coords, "size": size, "bounding_box": bb, "distance": dist}
+                    {
+                        "class": obj["class"],
+                        "type": obj["type"],
+                        "center": pnt,
+                        "coords:": screen_coords,
+                        "size": size,
+                        "bounding_box": bb,
+                        "distance": dist,
+                    }
                 )
-        #else:
+        # else:
         #    print(f"Object {obj['type']}, {pnt} at frame {i:03d} not visible")
 
     # Open the rendered image
@@ -514,14 +625,20 @@ for i in range(frames):
 
     draw = ImageDraw.Draw(img)
     annotations = []
-    visible_obj.sort(key=lambda obj: obj["distance"][2] if obj["distance"] is not None else float('inf'))
+    visible_obj.sort(
+        key=lambda obj: (
+            obj["distance"][2] if obj["distance"] is not None else float("inf")
+        )
+    )
     for idx, obj in enumerate(visible_obj):
         if obj["bounding_box"] is None:
             continue
         bb = obj["bounding_box"]
         bb_width = bb[2]
         bb_height = bb[3]
-        print(f"Processing object {obj['type']} with bounding box {bb} at frame {i:03d}")
+        print(
+            f"Processing object {obj['type']} with bounding box {bb} at frame {i:03d}"
+        )
         for earlier_obj in visible_obj[:idx]:
             if earlier_obj["bounding_box"] is None:
                 continue
@@ -534,7 +651,9 @@ for i in range(frames):
 
             if x_min < x_max and y_min < y_max:  # Overlap exists
                 print("Clipping bounding box for overlap with earlier object")
-                print(f"Earlier object {earlier_obj['type']} bounding box: {earlier_bb}")
+                print(
+                    f"Earlier object {earlier_obj['type']} bounding box: {earlier_bb}"
+                )
                 print(f"Current object {obj['type']} bounding box: {bb}")
                 # Check if the object is completely inside the earlier object
                 if (
@@ -543,24 +662,26 @@ for i in range(frames):
                     and bb[0] + bb[2] <= earlier_bb[0] + earlier_bb[2]
                     and bb[1] + bb[3] <= earlier_bb[1] + earlier_bb[3]
                 ):
-                    print(f"Object {obj['type']} completely inside earlier object, dropping")
+                    print(
+                        f"Object {obj['type']} completely inside earlier object, dropping"
+                    )
                     obj["bounding_box"] = None
                     break
-                
+
                 # Clip partially based on overlap
                 # left
-                if bb[0] < earlier_bb[0]: 
+                if bb[0] < earlier_bb[0]:
                     if bb[0] + bb[2] <= earlier_bb[0]:
-                        bb[2] = earlier_bb[0] - bb[0] 
+                        bb[2] = earlier_bb[0] - bb[0]
                 # top
-                if bb[1] < earlier_bb[1]: 
+                if bb[1] < earlier_bb[1]:
                     if bb[1] + bb[3] <= earlier_bb[1]:
-                        bb[1] = earlier_bb[1] - bb[1] 
+                        bb[1] = earlier_bb[1] - bb[1]
                 # right
                 if bb[0] + bb[2] > earlier_bb[0] + earlier_bb[2]:
                     if bb[0] <= earlier_bb[0] + earlier_bb[2]:
-                        temp = bb[0] + bb[2] # right border
-                        bb[0] = earlier_bb[0] + earlier_bb[2] # replace
+                        temp = bb[0] + bb[2]  # right border
+                        bb[0] = earlier_bb[0] + earlier_bb[2]  # replace
                         bb[2] = temp - bb[0]
                 # bottom
                 if bb[1] + bb[3] > earlier_bb[1] + earlier_bb[3]:
@@ -569,19 +690,22 @@ for i in range(frames):
                         bb[1] = earlier_bb[1] + earlier_bb[3]
                         bb[3] = temp - bb[1]
 
-
                 # Ensure width and height remain valid
                 bb[2] = max(0, bb[2])
                 bb[3] = max(0, bb[3])
-              
-                print(f"new width: {bb[2]}, new height: {bb[3]}, old width,height: {bb_width}, {bb_height}")
+
+                print(
+                    f"new width: {bb[2]}, new height: {bb[3]}, old width,height: {bb_width}, {bb_height}"
+                )
 
                 # Drop item if remaining width or height is smaller than 40% of original
                 cutoff = 0.4
                 if bb[2] < cutoff * bb_width or bb[3] < cutoff * bb_height:
-                    print(f"Object {obj['type']} bounding box too small after overlap check, dropping")
+                    print(
+                        f"Object {obj['type']} bounding box too small after overlap check, dropping"
+                    )
                     obj["bounding_box"] = None
-            
+
     for obj in visible_obj:
         if obj["bounding_box"] is None:
             print(f"Object {obj['type']} bounding box not visible")
@@ -601,7 +725,7 @@ for i in range(frames):
                     "class": obj["class"],
                     "type": obj["type"],
                     "bounding_box": bbox,
-                    "distance": dist.tolist() if isinstance(dist, np.ndarray) else dist
+                    "distance": dist.tolist() if isinstance(dist, np.ndarray) else dist,
                 }
             )
 
