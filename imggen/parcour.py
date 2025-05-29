@@ -15,8 +15,19 @@ from vapory import (
     Cylinder,
     Union,
     Pigment,
+    Texture,
+    ImageMap,
 )
 
+# A map_type 0 gives the default planar mapping.
+# A map_type 1 gives a spherical mapping (maps the image onto a sphere).
+# With map_type 2 you get a cylindrical mapping (maps the image onto a cylinder).
+# Finally map_type 5 is a torus or donut shaped mapping (maps the image onto a torus). 
+# (Note that in order for the image to be aligned properly, either the object 
+# has to be located at the origin when applying the pigment or the pigment 
+# has to be transformed to align with the object. 
+# It is generally easiest to create the object at the origin, apply the texture, 
+# then move it to wherever you want it.) 
 
 def color(rgb):
     return Pigment("color", rgb)
@@ -47,8 +58,8 @@ object_coords = [
         "type": "cone",
         "pos0": [0.1, 0, 0.1],
         "r0": 0.03,
-        "pos1": [0.1, 0.08, 0.1],
-        "r1": 0,
+        "pos1": [0.1, 0.05, 0.1],
+        "r1": 0.01,
         "color": [1, 0.8, 0],
     },  # Cone
     {
@@ -213,6 +224,12 @@ for t in trackLines:
 
 
 objects = []
+texture1 = Texture(Pigment(ImageMap('jpeg', '"textures/img1.jpg"','map_type', 0)))
+texture2 = Texture(Pigment(ImageMap('jpeg', '"textures/img1.jpg"','map_type', 1)))
+texture3 = Texture(Pigment(ImageMap('jpeg', '"textures/img2.jpg"','map_type', 2)))
+texture4 = Texture(Pigment(ImageMap('jpeg', '"textures/img2.jpg"','map_type', 1)))
+
+
 for obj in object_coords:
     if obj["type"] == "box":
         objects.append(Box(obj["pos0"], obj["pos1"], color(obj["color"])))
@@ -221,7 +238,8 @@ for obj in object_coords:
             Cone(obj["pos0"], obj["r0"], obj["pos1"], obj["r1"], color(obj["color"]))
         )
     elif obj["type"] == "sphere":
-        objects.append(Sphere(obj["pos0"], obj["r0"], color(obj["color"])))
+        #objects.append(Sphere(obj["pos0"], obj["r0"], color(obj["color"])))
+        objects.append(Sphere(obj["pos0"], obj["r0"], texture2))
 
 
 birds_eye_camera = Camera(
@@ -255,7 +273,7 @@ def cam_pos(x, y, z, ry, rz, h=0.02):
     return (
         [x - cx - 0.01, y + cy + h / 4, z + cz - 0.01],
         [x + cx + 0.01, y + cy + 3 * h / 4, z + cz + 0.01],
-        [x + cx, y + cy + h / 2, z + cz],  # make sure camera is not inside box: front
+        [x + cx, y + cy + 5 * h / 4, z + cz],  # make sure camera is above box
     )
 
 
@@ -287,15 +305,15 @@ def robot_union(x, z, rx=0.03, ry=0.025, rz=0.05, rot=0):
             color([1, 1, 1]),
         ),
         # Camera mount
+        # Box(
+        #     [-0.01, ry, -0.01],
+        #     [+0.01, ry + 0.02, 0],
+        #     color([1.2, 0.2, 0.2]),
+        # ),
+        # Camera box. camera sits on top!
         Box(
-            [-0.015, ry, -0.01],
-            [+0.015, ry + 0.02, 0],
-            color([1.2, 0.2, 0.2]),
-        ),
-        # Camera box
-        Box(
-            [cam0[0], cam0[1], cam0[2] - 0.01],
-            [cam1[0], cam1[1], cam1[2] - 0.015],
+            [cam0[0], cam0[1], cam0[2]],
+            [cam1[0], cam1[1], cam1[2]],
             # cam_pos(0, 0, 0, ry*.9, 0)[0],
             # cam_pos(0, 0, 0, ry*.9, 0)[1],
             color([0.1, 1.1, 0.1]),
@@ -484,6 +502,10 @@ def create_scene(t, duration, view="robot"):
         color([1, 1, 0]),  # Yellow color for visibility
     )
 
+    # floor = Box([-0.5, -0.01, -0.5], [0.5, 0, 0.5], color([0.9, 0.9, 0.0])),
+    floor = Box([-0.5, -0.01, -0.5], [0.5, 0, 0.5], texture4)
+
+
     return Scene(
         camera,
         [
@@ -521,7 +543,7 @@ def create_scene(t, duration, view="robot"):
             ##Cylinder([pos[0] + 0.025, 0.005, pos[2] - 0.05], [pos[0] + 0.025, 0.005, pos[2] - 0.07], 0.01, color([0.05, 0.05, 0.05])),
             ## Cylinder([pos[0] - 0.025, 0.005, pos[2] - 0.05], [pos[0] - 0.025, 0.005, pos[2] - 0.07], 0.01, color([0.05, 0.05, 0.05])),
             # Arena floor
-            Box([-0.5, -0.01, -0.5], [0.5, 0, 0.5], color([0.9, 0.9, 0.0])),
+            floor,
             # Oval track (50 cm diameter, 2 cm width)
             #*track,
             # objects
@@ -544,8 +566,9 @@ img_width = 600
 img_height = 450
 
 for i in range(frames):
+    print("\n\nRendering frame", i, "of", frames)
     t = i / fps
-    for view in ["bird","robot"]:  # , "bird", "side"]:
+    for view in ["bird","robot","side"]:  # , "bird", "side"]:
         scene = create_scene(t, duration, view)
 
         scene.render(
@@ -594,11 +617,11 @@ for i in range(frames):
             pnt, camera_pos, look_at, camera_fov, 600, 450
         )
         if screen_coords:
-            print(
-                f"Object {obj['type']}, {pnt} at frame {i:03d} on screen at:",
-                screen_coords,
-                rel_pos,
-            )
+            #print(
+            #    f"Object {obj['type']}, {pnt} at frame {i:03d} on screen at:",
+            #    screen_coords,
+            #    rel_pos,
+            #)
             bb, dist = estimate_bounding_box(
                 pnt, size, camera_pos, look_at, camera_fov, img_width, img_height
             )
@@ -639,24 +662,37 @@ for i in range(frames):
         bb_width = bb[2]
         bb_height = bb[3]
         print(
-            f"Processing object {obj['type']} with bounding box {bb} at frame {i:03d}"
+            f"Processing object {obj['class']} with bounding box {bb} at frame {i:03d}"
         )
         for earlier_obj in visible_obj[:idx]:
             if earlier_obj["bounding_box"] is None:
                 continue
             earlier_bb = earlier_obj["bounding_box"]
+            if bb[0] + bb[2] <= earlier_bb[0]:
+                # object completely left to earlier object
+                continue
+            if bb[1] + bb[3] <= earlier_bb[1]:
+                # object completely above to earlier object
+                continue
+            if bb[0] >= earlier_bb[0] + earlier_bb[2]:
+                # object completely right to earlier object
+                continue
+            if bb[1] >= earlier_bb[1] + earlier_bb[3]:
+                # object completely below to earlier object
+                continue
             # Check for overlap
             x_min = max(bb[0], earlier_bb[0])
             y_min = max(bb[1], earlier_bb[1])
             x_max = min(bb[0] + bb[2], earlier_bb[0] + earlier_bb[2])
             y_max = min(bb[1] + bb[3], earlier_bb[1] + earlier_bb[3])
+            # more checks
 
-            if x_min < x_max and y_min < y_max:  # Overlap exists
+            if x_min < x_max and y_min < y_max :  # Overlap exists
                 print("Clipping bounding box for overlap with earlier object")
                 print(
-                    f"Earlier object {earlier_obj['type']} bounding box: {earlier_bb}"
+                    f"Earlier object {earlier_obj['class']} bounding box: {earlier_bb}"
                 )
-                print(f"Current object {obj['type']} bounding box: {bb}")
+                print(f"Current object {obj['class']} bounding box: {bb}")
                 # Check if the object is completely inside the earlier object
                 if (
                     bb[0] >= earlier_bb[0]
@@ -665,7 +701,7 @@ for i in range(frames):
                     and bb[1] + bb[3] <= earlier_bb[1] + earlier_bb[3]
                 ):
                     print(
-                        f"Object {obj['type']} completely inside earlier object, dropping"
+                        f"Object {obj['class']} completely inside earlier object, dropping"
                     )
                     obj["bounding_box"] = None
                     break
@@ -701,27 +737,27 @@ for i in range(frames):
                 )
 
                 # Drop item if remaining width or height is smaller than 40% of original
-                cutoff = 0.4
+                cutoff = 0.3
                 if bb[2] < cutoff * bb_width or bb[3] < cutoff * bb_height:
                     print(
-                        f"Object {obj['type']} bounding box too small after overlap check, dropping"
+                        f"Object {obj['class']} bounding box too small after overlap check, dropping"
                     )
                     obj["bounding_box"] = None
 
     for obj in visible_obj:
         if obj["bounding_box"] is None:
-            print(f"Object {obj['type']} bounding box not visible")
+            print(f"Object {obj['class']} bounding box not visible")
         else:
             bb = obj["bounding_box"]
             dist = obj["distance"]
             bbox = (bb[0], bb[1], bb[0] + bb[2], bb[1] + bb[3])
-            print(f"Object {obj['type']} bounding box at frame {i:03d}:", bbox)
+            print(f"Object {obj['class']} bounding box at frame {i:03d}:", bbox)
             draw.rectangle(
                 bbox,
                 outline="red",
                 width=2,
             )
-            draw.text((bbox[2], bbox[3]), obj["type"], fill="red")
+            draw.text((bbox[2], bbox[3]), obj["class"], fill="red")
             annotations.append(
                 {
                     "class": obj["class"],
