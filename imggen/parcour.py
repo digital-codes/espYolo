@@ -265,7 +265,7 @@ def estimate_bounding_box(center, size, cam_pos, look_at, fov_deg, img_width, im
             projected_points.append((x_screen, y_screen))
 
     if not projected_points:
-        return None  # All corners behind the camera
+        return None, None  # All corners behind the camera
 
     xs, ys = zip(*projected_points)
     x_min, x_max = min(xs) - pad, max(xs) + pad
@@ -279,15 +279,15 @@ def estimate_bounding_box(center, size, cam_pos, look_at, fov_deg, img_width, im
     
 
     if x_min >= x_max or y_min >= y_max:
-        return None  # Outside screen entirely
+        return None, None  # Outside screen entirely
     
     cutoff_x = img_width // 10 
     cutoff_y = img_height // 10
     if x_max - x_min < cutoff_x or y_max - y_min < cutoff_y:
-        return None
+        return None, None
         
 
-    return [int(x_min), int(y_min), int(x_max - x_min), int(y_max - y_min)]
+    return [int(x_min), int(y_min), int(x_max - x_min), int(y_max - y_min)],p_cam
 
 
 
@@ -296,7 +296,7 @@ def lookat_point(pos):
     Returns a camera object that looks at a specified point.
     cam_pos: camera position in world
     """
-    cam_rot = 1 # optional speedup 
+    cam_rot = 4 # optional speedup 
     angle = pos[3]*cam_rot  # angle in degrees
     cam_dz = np.cos(np.radians(-angle))
     cam_dx = np.sin(np.radians(-angle))
@@ -469,7 +469,7 @@ for i in range(frames):
         coords = obj["coords:"]
         x, y = coords
         bbox = (x - 10, y - 10, x + 10, y + 10)  # Size of the bounding box
-        bb = estimate_bounding_box(
+        bb, dist = estimate_bounding_box(
             obj["center"], obj["size"], camera_pos, look_at, camera_fov, img_width, img_height
         )
         if bb is None:
@@ -486,7 +486,8 @@ for i in range(frames):
             annotations.append(
                 {
                     "type": obj["type"],
-                    "bounding_box": bbox
+                    "bounding_box": bbox,
+                    "distance": dist.tolist() if isinstance(dist, np.ndarray) else dist
                 }
             )
 
