@@ -219,47 +219,6 @@ def project_point_(point, cam_pos, look_at, fov_deg, img_width, img_height):
     return (x_screen, y_screen), p_cam
 
 
-def estimate_bounding_box_(
-    center, size, cam_pos, look_at, fov_deg, img_width, img_height
-):
-    dx, dy, dz = size[0] / 2, size[1] / 2, size[2] / 2
-    print("Bounding box center in world space:", center)
-    print("Bounding box size in world space:", size)
-    # Calculate the corners of the bounding box in world space
-    sx, sy, sz = size[0] / 2, size[1] / 2, size[2] / 2
-    print("Bounding box half sizes:", sx, sy, sz)
-    print("dx, dy, dz:", dx, dy, dz)
-    # Corners are defined as [x, y, z] offsets from the center
-    # Each corner is a combination of +/- half sizes
-    # Generate all 8 corners of the bounding box
-    print("Calculating bounding box corners...")
-    corners = [
-        [center[0] + sx * dx, center[1] + sy * dy, center[2] + sz * dz]
-        for sx in [-1, 1]
-        for sy in [-1, 1]
-        for sz in [-1, 1]
-    ]
-    print("Bounding box corners in world space:", corners)
-
-    projected = [
-        project_point(c, cam_pos, look_at, fov_deg, img_width, img_height)
-        for c in corners
-    ]
-
-    visible_points = [pt[0] for pt in projected if pt[0] is not None]
-
-    if not visible_points:
-        return None  # Box not visible
-
-    print("Visible points:", visible_points)
-    xs, ys = zip(*visible_points)
-    x_min, x_max = max(0, min(xs)), min(img_width, max(xs))
-    y_min, y_max = max(0, min(ys)), min(img_height, max(ys))
-
-    # x,y,w,h
-    return [int(x_min), int(y_min), int(x_max - x_min), int(y_max - y_min)]
-
-#######
 
 def project_point(point, cam_pos, look_at, fov_deg, img_width, img_height):
     right, up, forward = get_camera_basis(cam_pos, look_at)
@@ -279,8 +238,9 @@ def project_point(point, cam_pos, look_at, fov_deg, img_width, img_height):
     x_screen = int((x_ndc + 1) * img_width / 2)
     y_screen = int((1 - y_ndc) * img_height / 2)
 
-    if not (0 <= x_screen < img_width and 0 <= y_screen < img_height):
-        return None, p_cam
+    # don't do this here. clip later!
+    #if not (0 <= x_screen < img_width and 0 <= y_screen < img_height):
+    #    return None, p_cam
 
     return (x_screen, y_screen), p_cam
 
@@ -316,9 +276,16 @@ def estimate_bounding_box(center, size, cam_pos, look_at, fov_deg, img_width, im
     y_min = max(0, y_min)
     x_max = min(img_width, x_max)
     y_max = min(img_height, y_max)
+    
 
     if x_min >= x_max or y_min >= y_max:
         return None  # Outside screen entirely
+    
+    cutoff_x = img_width // 10 
+    cutoff_y = img_height // 10
+    if x_max - x_min < cutoff_x or y_max - y_min < cutoff_y:
+        return None
+        
 
     return [int(x_min), int(y_min), int(x_max - x_min), int(y_max - y_min)]
 
@@ -429,7 +396,7 @@ frames = int(duration * fps)
 
 for i in range(frames):
     t = i / fps
-    for view in ["robot", "bird", "side"]:
+    for view in ["robot"]: #, "bird", "side"]:
         scene = create_scene(t, duration, view)
 
         scene.render(
@@ -461,13 +428,13 @@ for i in range(frames):
             pnt = [
                 obj["pos1"][i] - (obj["pos1"][i] - obj["pos0"][i]) / 2 for i in range(3)
             ]
-            size = [obj["pos1"][i] - obj["pos0"][i] for i in range(3)]
+            size = [(obj["pos1"][i] - obj["pos0"][i]) for i in range(3)]
         elif obj["type"] == "cone":
             pnt = [obj["pos0"][0],
                 obj["pos1"][1] - (obj["pos1"][1] - obj["pos0"][1]) / 2,
                 obj["pos0"][2]
             ]
-            size = [obj["r0"]*2,obj["pos1"][1] - obj["pos0"][1],obj["r0"]*2]
+            size = [obj["r0"]*2,(obj["pos1"][1] - obj["pos0"][1]),obj["r0"]*2]
         elif obj["type"] == "sphere":
             # For sphere, use the center position
             pnt = obj["pos0"]  # Sphere position is already the center
@@ -487,8 +454,6 @@ for i in range(frames):
             )
         else:
             print(f"Object {obj['type']}, {pnt} at frame {i:03d} not visible")
-    with open(os.path.join(output_dir, f"visible_objects_{i:03d}.txt"), "w") as f:
-        json.dump(visible_obj, f)
 
     # Open the rendered image
     img_path = os.path.join(output_dir, f"robot_{i:03d}.png")
@@ -499,6 +464,7 @@ for i in range(frames):
     # Draw bounding boxes on the image
 
     draw = ImageDraw.Draw(img)
+    annotations = []
     for obj in visible_obj:
         coords = obj["coords:"]
         x, y = coords
@@ -511,12 +477,21 @@ for i in range(frames):
         else:
             bbox = (bb[0], bb[1], bb[0] + bb[2], bb[1] + bb[3])
             print(f"Object {obj['type']} bounding box at frame {i:03d}:", bbox)
-        draw.rectangle(
-            bbox,
-            outline="red",
-            width=2,
-        )
-        draw.text((bbox[2], bbox[3]), obj["type"], fill="red")
+            draw.rectangle(
+                bbox,
+                outline="red",
+                width=2,
+            )
+            draw.text((bbox[2], bbox[3]), obj["type"], fill="red")
+            annotations.append(
+                {
+                    "type": obj["type"],
+                    "bounding_box": bbox
+                }
+            )
+
+    with open(os.path.join(output_dir, f"visible_objects_{i:03d}.json"), "w") as f:
+        json.dump(annotations, f)
 
     # Save the annotated image
     annotated_img_path = os.path.join(output_dir, f"robot_ann{i:03d}.png")
