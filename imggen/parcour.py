@@ -70,7 +70,23 @@ object_coords = [
 
     {"class":"fence","type": "box", "pos0": [ 0, 0, -.5], "pos1": [-.25, 0.02, -.5],"color":[1, 0.1, 0.1]},  # fence
     {"class":"fence","type": "box", "pos0": [-.25, 0, -.5], "pos1": [-.5, 0.02, -.5],"color":[1, 0.1, 0.1]},  # fence
+    
 ]
+
+# Oval middle lines
+object_coords.extend([
+    {"class": "line", "type": "box", "pos0": [  0, 0, -.40], "pos1": [ .25 ,.02, -.4], "color": [1, 1, 1]}, 
+    {"class": "line", "type": "box", "pos0": [.25, 0, -.40], "pos1": [ .40,.02, -.20], "color": [1, 1, 1]}, 
+    {"class": "line", "type": "box", "pos0": [.40, 0, -.20], "pos1": [ .40 ,.02,   0], "color": [1, 1, 1]}, 
+    {"class": "line", "type": "box", "pos0": [.40, 0,    0], "pos1": [ .25 ,.02, .20], "color": [1, 1, 1]}, 
+    {"class": "line", "type": "box", "pos0": [.25, 0,  .20], "pos1": [  0 ,.02,  .40], "color": [1, 1, 1]}, 
+    {"class": "line", "type": "box", "pos0": [ .0, 0,  .40], "pos1": [-.25,.02,  .40], "color": [1, 1, 1]}, 
+    {"class": "line", "type": "box", "pos0": [-.25, 0, .40], "pos1": [-.40,.02,  .40], "color": [1, 1, 1]}, 
+    {"class": "line", "type": "box", "pos0": [-.40, 0, .40], "pos1": [-.40,.02,  .25], "color": [1, 1, 1]}, 
+    {"class": "line", "type": "box", "pos0": [-.40, 0, .25], "pos1": [-.25,.02,   .0], "color": [1, 1, 1]}, 
+    {"class": "line", "type": "box", "pos0": [-.25, 0,  .0], "pos1": [-.25,.02, -.25], "color": [1, 1, 1]}, 
+    {"class": "line", "type": "box", "pos0": [-.25, 0,-.25], "pos1": [  0,.02, -.40], "color": [1, 1, 1]}, 
+])
 
 
 objects = []
