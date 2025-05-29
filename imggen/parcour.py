@@ -174,7 +174,7 @@ object_coords = [
 
 
 def oval_track_segments(
-    radius=0.25, width=0.02, gap=0.01, height=0.001, segments=60
+    radius=0.25, width=0.02, gap = 0 , height=0.001, segments=60
 ):
     objects = []
     length = 2 * np.pi * radius / segments - gap  # Length of each segment
@@ -182,12 +182,14 @@ def oval_track_segments(
         theta1 = 2 * np.pi * i / segments
         # Outer segment
         x1, z1 = radius * np.cos(theta1), radius * np.sin(theta1)
+        w = length * 1.1
+        l = length * 1.1
         objects.append(
             {
                 "class": "track",
                 "type": "box",
-                "pos0": [x1 - width / 2, height, z1 - length / 2],
-                "pos1": [x1 + width / 2, height, z1 + length / 2],
+                "pos0": [x1 - w / 2, height, z1 - l / 2],
+                "pos1": [x1 + w / 2, height, z1 + l / 2],
                 "color": [1, 0.1, 0.1],
                 "rotate": [0, 0, 0],
             },
@@ -543,7 +545,7 @@ img_height = 450
 
 for i in range(frames):
     t = i / fps
-    for view in ["robot"]:  # , "bird", "side"]:
+    for view in ["bird","robot"]:  # , "bird", "side"]:
         scene = create_scene(t, duration, view)
 
         scene.render(
