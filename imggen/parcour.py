@@ -35,28 +35,54 @@ rx, ry, rz = 0.05, 0.06, 0.08  # Robot dimensions
 camera_fov = 43.6  # horizontal FOV ~ matching 2.32 mm lens on ~1 mm sensor
 
 object_coords = [
-    {"type": "box", "pos0": [0.2, 0, 0.2], "pos1": [0.24, 0.04, 0.24]},  # Box
+    {"class":"box","type": "box", "pos0": [0.2, 0, 0.2], "pos1": [0.24, 0.04, 0.24],"color":[1, 0.6, 0.5]},  # Box
     {
+        "class":"person",
         "type": "cone",
         "pos0": [0.1, 0, 0.1],
         "r0": 0.03,
         "pos1": [0.1, 0.08, 0.1],
         "r1": 0,
+        "color": [1, 0.8, 0]
     },  # Cone
-    {"type": "sphere", "pos0": [-0.2, 0.04, 0.25], "r0": 0.04},  # Sphere
+    {"class":"ball","type": "sphere", "pos0": [-0.2, 0.04, 0.25], "r0": 0.04,"color":[0.4, 0.6, 1]},  # Sphere
+
+    {"class":"fence","type": "box", "pos0": [-.5, 0, -.5], "pos1": [-.5, 0.02, -.25],"color":[1, 0.1, 0.1]},  # fence
+    {"class":"fence","type": "box", "pos0": [-.5, 0, -.25], "pos1": [-.5, 0.02,  0],"color":[1, 0.1, 0.1]},  # fence
+
+    {"class":"fence","type": "box", "pos0": [-.5, 0,   0], "pos1": [-.5, 0.02, .25],"color":[1, 0.1, 0.1]},  # fence
+    {"class":"fence","type": "box", "pos0": [-.5, 0, .25], "pos1": [-.5, 0.02, .5],"color":[1, 0.1, 0.1]},  # fence
+
+    {"class":"fence","type": "box", "pos0": [-.5, 0, .5], "pos1": [-.25, 0.02, .5],"color":[1, 0.1, 0.1]},  # fence
+    {"class":"fence","type": "box", "pos0": [-.25, 0, .5], "pos1": [ 0, 0.02, .5],"color":[1, 0.1, 0.1]},  # fence
+
+    {"class":"fence","type": "box", "pos0": [  0, 0, .5], "pos1": [.25, 0.02, .5],"color":[1, 0.1, 0.1]},  # fence
+    {"class":"fence","type": "box", "pos0": [.25, 0, .5], "pos1": [.5, 0.02, .5],"color":[1, 0.1, 0.1]},  # fence
+
+    {"class":"fence","type": "box", "pos0": [.5, 0, .5], "pos1": [.5, 0.02, .25],"color":[1, 0.1, 0.1]},  # fence
+    {"class":"fence","type": "box", "pos0": [.5, 0, .25], "pos1": [.5, 0.02,   0],"color":[1, 0.1, 0.1]},  # fence
+
+    {"class":"fence","type": "box", "pos0": [.5, 0,  0], "pos1": [.5, 0.02, -.25],"color":[1, 0.1, 0.1]},  # fence
+    {"class":"fence","type": "box", "pos0": [.5, 0, -.25], "pos1": [.5, 0.02, -.5],"color":[1, 0.1, 0.1]},  # fence
+
+    {"class":"fence","type": "box", "pos0": [.5, 0, -.5], "pos1": [.25, 0.02, -.5],"color":[1, 0.1, 0.1]},  # fence
+    {"class":"fence","type": "box", "pos0": [.25, 0, -.5], "pos1": [  0, 0.02, -.5],"color":[1, 0.1, 0.1]},  # fence
+
+    {"class":"fence","type": "box", "pos0": [ 0, 0, -.5], "pos1": [-.25, 0.02, -.5],"color":[1, 0.1, 0.1]},  # fence
+    {"class":"fence","type": "box", "pos0": [-.25, 0, -.5], "pos1": [-.5, 0.02, -.5],"color":[1, 0.1, 0.1]},  # fence
 ]
 
 
 objects = []
 for obj in object_coords:
     if obj["type"] == "box":
-        objects.append(Box(obj["pos0"], obj["pos1"], color([1, 0.6, 0.5])))
+        objects.append(Box(obj["pos0"], obj["pos1"], color(obj["color"])))
     elif obj["type"] == "cone":
         objects.append(
-            Cone(obj["pos0"], obj["r0"], obj["pos1"], obj["r1"], color([1, 0.8, 0]))
+            Cone(obj["pos0"], obj["r0"], obj["pos1"], obj["r1"], color(obj["color"]))
         )
     elif obj["type"] == "sphere":
-        objects.append(Sphere(obj["pos0"], obj["r0"], color([0.4, 0.6, 1])))
+        objects.append(Sphere(obj["pos0"], obj["r0"], color(obj["color"])))
 
 
 birds_eye_camera = Camera(
@@ -281,8 +307,8 @@ def estimate_bounding_box(center, size, cam_pos, look_at, fov_deg, img_width, im
     if x_min >= x_max or y_min >= y_max:
         return None, None  # Outside screen entirely
     
-    cutoff_x = img_width // 10 
-    cutoff_y = img_height // 10
+    cutoff_x = img_width // 20 
+    cutoff_y = img_height // 20
     if x_max - x_min < cutoff_x or y_max - y_min < cutoff_y:
         return None, None
         
@@ -458,7 +484,7 @@ for i in range(frames):
             if bb is not None:
                 # print(f"Object {obj['type']} bounding box at frame {i:03d}:", bb,dist)
                 visible_obj.append(
-                    {"type": obj["type"], "center": pnt, "coords:": screen_coords, "size": size, "bounding_box": bb, "distance": dist}
+                    {"class":obj["class"], "type": obj["type"], "center": pnt, "coords:": screen_coords, "size": size, "bounding_box": bb, "distance": dist}
                 )
         #else:
         #    print(f"Object {obj['type']}, {pnt} at frame {i:03d} not visible")
@@ -556,6 +582,7 @@ for i in range(frames):
             draw.text((bbox[2], bbox[3]), obj["type"], fill="red")
             annotations.append(
                 {
+                    "class": obj["class"],
                     "type": obj["type"],
                     "bounding_box": bbox,
                     "distance": dist.tolist() if isinstance(dist, np.ndarray) else dist
