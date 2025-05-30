@@ -674,6 +674,13 @@ for i in range(frames):
             )
             print(f"Current object {obj['class']} bounding box: {bb}")
 
+            # try to skip if same class
+            if earlier_obj["class"] == obj["class"]:
+                print(
+                    f"Skipping overlap check for same class {earlier_obj['class']}"
+                )
+                continue
+
             # check for disjunct
             if bb[0] + bb[2] <= earlier_bb[0]:
                 # object completely left to earlier object
