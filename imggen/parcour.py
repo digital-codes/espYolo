@@ -722,7 +722,7 @@ for i in range(frames):
             else:
                 temp = bb[0] + bb[2]  # right border
                 bb[0] = earlier_bb[0] + earlier_bb[2] # cut left
-                bb[2] = temp - (earlier_bb[1] + earlier_bb[3])
+                bb[2] = temp - bb[0]
 
             if bb[1] < earlier_bb[1]:
                 bb[3] = earlier_bb[1] - bb[1] # cut bottom
@@ -737,7 +737,7 @@ for i in range(frames):
             )
             
             # Drop item if remaining width or height is smaller than 40% of original
-            cutoff = 0.3
+            cutoff = 0.1
             if bb[2] < cutoff * bb_width or bb[3] < cutoff * bb_height:
                 print(
                     f"Object {obj['class']} bounding box too small after overlap check, dropping"
