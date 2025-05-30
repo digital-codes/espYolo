@@ -607,11 +607,11 @@ for i in range(frames):
                 obj["pos1"][1] - (obj["pos1"][1] - obj["pos0"][1]) / 2,
                 obj["pos0"][2],
             ]
-            size = [obj["r0"] * 2, (obj["pos1"][1] - obj["pos0"][1]), obj["r0"] * 2]
+            size = [obj["r0"] * 1.7, (obj["pos1"][1] - obj["pos0"][1]), obj["r0"] * 1.7]
         elif obj["type"] == "sphere":
             # For sphere, use the center position
             pnt = obj["pos0"]  # Sphere position is already the center
-            size = [obj["r0"] * 2 for i in range(3)]
+            size = [obj["r0"] * 1.7 for i in range(3)]
         # pnt = [obj["pos1"][i] - (obj["pos1"][i] - obj["pos0"][i]) / 2 for i in range(3)]
         screen_coords, rel_pos = project_point(
             pnt, camera_pos, look_at, camera_fov, 600, 450
