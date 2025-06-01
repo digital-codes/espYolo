@@ -14,6 +14,7 @@ from vapory import (
     Sphere,
     Cylinder,
     Union,
+    Plane,
     Pigment,
     Texture,
     ImageMap,
@@ -224,10 +225,12 @@ for t in trackLines:
 
 
 objects = []
-texture1 = Texture(Pigment(ImageMap('jpeg', '"textures/img1.jpg"','map_type', 0)))
-texture2 = Texture(Pigment(ImageMap('jpeg', '"textures/img1.jpg"','map_type', 1)))
-texture3 = Texture(Pigment(ImageMap('jpeg', '"textures/img2.jpg"','map_type', 2)))
-texture4 = Texture(Pigment(ImageMap('jpeg', '"textures/img2.jpg"','map_type', 1)))
+texture1 = Texture(Pigment(ImageMap('jpeg', '"textures/img1.jpg"', 'interpolate', 2),
+                           'rotate', [90, 0, 0], 'scale', [1, 1, 1], 'translate', [-1, 0, -1]))
+texture2 = Texture(Pigment(ImageMap('jpeg', '"textures/img2.jpg"','interpolate', 2),
+                           'rotate', [90, 0, 0], 'scale', [1, 1, 1], 'translate', [-1, 0, -1]))
+texture3 = Texture(Pigment(ImageMap('jpeg', '"textures/img2.jpg"','map_type', 0)))
+texture4 = Texture(Pigment(ImageMap('jpeg', '"textures/img2.jpg"','map_type', 0)))
 
 
 for obj in object_coords:
@@ -489,6 +492,10 @@ def create_scene(t, duration, view="robot"):
 
     #track = oval_track_segments()
 
+    # Create plane with texture1
+    plane = Plane([0, 1, 0], 0, texture1, "translate", [0, -0.01, 0])
+
+
     pointer = Cylinder(
         [camera_pos[0], camera_pos[1] + 0.005, camera_pos[2]],  # camera_pos,
         look_at,
@@ -503,7 +510,7 @@ def create_scene(t, duration, view="robot"):
     )
 
     # floor = Box([-0.5, -0.01, -0.5], [0.5, 0, 0.5], color([0.9, 0.9, 0.0])),
-    floor = Box([-0.5, -0.01, -0.5], [0.5, 0, 0.5], texture4)
+    floor = Box([-0.5, -0.01, -0.5], [0.5, 0, 0.5], texture2)
 
 
     return Scene(
@@ -542,6 +549,8 @@ def create_scene(t, duration, view="robot"):
             ## wheels
             ##Cylinder([pos[0] + 0.025, 0.005, pos[2] - 0.05], [pos[0] + 0.025, 0.005, pos[2] - 0.07], 0.01, color([0.05, 0.05, 0.05])),
             ## Cylinder([pos[0] - 0.025, 0.005, pos[2] - 0.05], [pos[0] - 0.025, 0.005, pos[2] - 0.07], 0.01, color([0.05, 0.05, 0.05])),
+            # background plane
+            plane,
             # Arena floor
             floor,
             # Oval track (50 cm diameter, 2 cm width)
