@@ -50,6 +50,8 @@ a, b = 0.25, 0.25  # 50 cm elliptical path
 
 # Robot dims
 rx, ry, rz = 0.05, 0.06, 0.08  # Robot dimensions
+# camera height
+cam_h = .02  # Camera height above robot body
 
 camera_fov = 43.6  # horizontal FOV ~ matching 2.32 mm lens on ~1 mm sensor
 
@@ -57,8 +59,8 @@ object_coords = [
     {
         "class": "box",
         "type": "box",
-        "pos0": [0.2, 0, 0.2],
-        "pos1": [0.24, 0.04, 0.24],
+        "pos0": [0.2, 0, 0.3],
+        "pos1": [0.24, 0.04, 0.34],
         "color": [1, 0.6, 0.5],
     },  # Box
     {
@@ -73,7 +75,7 @@ object_coords = [
     {
         "class": "ball",
         "type": "sphere",
-        "pos0": [-0.2, 0.04, 0.25],
+        "pos0": [-0.1, 0.04, 0.05],
         "r0": 0.04,
         "color": [0.4, 0.6, 1],
     },  # Sphere
@@ -192,7 +194,7 @@ object_coords = [
 ]
 
 
-def oval_track_segments(radius=0.25, width=0.02, gap=0, height=0.001, segments=60):
+def oval_track_segments_(radius=0.25, width=0.02, gap=0, height=0.001, segments=60):
     objects = []
     length = 2 * np.pi * radius / segments - gap  # Length of each segment
     for i in range(segments):
@@ -211,6 +213,68 @@ def oval_track_segments(radius=0.25, width=0.02, gap=0, height=0.001, segments=6
                 "rotate": [0, 0, 0],
             },
         )
+    return objects
+
+def oval_track_segments(radius=0.25, width=0.02, height=0.001, segments=60):
+    objects = []
+
+    arc_segments = segments // 2
+    straight_segments = 8
+
+    # Length of straight path = approx arc length
+    straight_length = straight_segments * width # 2 * radius  # roughly matching semicircle length
+    segment_length = straight_length / straight_segments
+
+    # STRAIGHT SEGMENTS (along Z axis)
+    for i in range(straight_segments):
+        z = -straight_length / 2 + i * segment_length
+        # Left side
+        objects.append({
+            "class": "track",
+            "type": "box",
+            "pos0": [-radius - width/2, height, z - width/2],
+            "pos1": [-radius + width/2, height + 0.001, z + width/2],
+            "color": [1, 1, 1],
+            "rotate": [0, 0, 0],
+        })
+        # Right side
+        objects.append({
+            "class": "track",
+            "type": "box",
+            "pos0": [radius - width/2, height, z - width/2],
+            "pos1": [radius + width/2, height + 0.001, z + width/2],
+            "color": [1, 1, 1],
+            "rotate": [0, 0, 0],
+        })
+
+    # ARC SEGMENTS (top and bottom)
+    for i in range(arc_segments + 1):
+        theta = np.pi * i / arc_segments  # 0 to pi
+
+        # Top arc (connects left to right)
+        x = radius * np.cos(theta)
+        z = straight_length / 2 + radius * np.sin(theta)
+        objects.append({
+            "class": "track",
+            "type": "box",
+            "pos0": [x - width/2, height, z - width/2],
+            "pos1": [x + width/2, height + 0.001, z + width/2],
+            "color": [1, 1, 1],
+            "rotate": [0, 0, 0],
+        })
+
+        # Bottom arc (connects right to left)
+        x = -radius * np.cos(theta)
+        z = -straight_length / 2 - radius * np.sin(theta)
+        objects.append({
+            "class": "track",
+            "type": "box",
+            "pos0": [x - width/2, height, z - width/2],
+            "pos1": [x + width/2, height + 0.001, z + width/2],
+            "color": [1, 1, 1],
+            "rotate": [0, 0, 0],
+        })
+
     return objects
 
 
@@ -232,18 +296,18 @@ for t in trackLines:
 objects = []
 texture1 = Texture(
     Pigment(
-        ImageMap("jpeg", '"textures/img2.jpg"', "interpolate", 2),
+        ImageMap("jpeg", '"textures/img1.jpg"', "interpolate", 2),
         "rotate",
         [90, 0, 0],
         "scale",
-        [1, 1, 1],
+        [2, 2, 2],
         "translate",
         [-1, 0, -1],
     )
 )
 texture2 = Texture(
     Pigment(
-        ImageMap("jpeg", '"textures/img1.jpg"', "interpolate", 2),
+        ImageMap("jpeg", '"textures/img2.jpg"', "interpolate", 2),
         "rotate",
         [90, 0, 0],
         "scale",
@@ -254,12 +318,18 @@ texture2 = Texture(
 )
 
 # Tennis ball with yellow-green fuzzy texture
-texture5 = Texture(
+texture3 = Texture(
     Pigment("color", [0.85, 1.0, 0.3]),  # Tennis ball yellow-green
     Finish("ambient", 0.3, "diffuse", 0.6, "roughness", 0.1),
     Normal("bumps", 0.2, "scale", 0.05),  # Slight fuzz effect
 )
 
+# dark stone
+texture4 = Texture(
+    Pigment('color', [0.1, 0.1, 0.1]),        # Dark gray (almost black)
+    Normal('bumps', 0.3, 'scale', 0.05),      # Subtle surface structure
+    Finish('ambient', 0.1, 'diffuse', 0.7, 'roughness', 0.2)
+)
 
 #texture6 = Texture(
 #    Pigment('wood', 'color_map', wood_colormap, 'scale', [0.3, 1, 0.3]),
@@ -278,7 +348,7 @@ for obj in object_coords:
             Cone(obj["pos0"], obj["r0"], obj["pos1"], obj["r1"], Texture("Cork"))) # color(obj["color"]))
     elif obj["type"] == "sphere":
         # objects.append(Sphere(obj["pos0"], obj["r0"], color(obj["color"])))
-        objects.append(Sphere(obj["pos0"], obj["r0"], texture5))
+        objects.append(Sphere(obj["pos0"], obj["r0"], texture3))
 
 
 birds_eye_camera = Camera(
@@ -310,15 +380,15 @@ def cam_pos(x, y, z, ry, rz, h=0.02):
     cy = ry  #  + .02
     cz = rz
     return (
-        [x - cx - 0.01, y + cy + h / 4, z + cz - 0.01],
-        [x + cx + 0.01, y + cy + 3 * h / 4, z + cz + 0.01],
+        [x - cx - 0.005, y + cy + h / 4, z + cz - 0.005],
+        [x + cx + 0.005, y + cy + 3 * h / 4, z + cz + 0.005],
         [x + cx, y + cy + 5 * h / 4, z + cz],  # make sure camera is above box
     )
 
 
 def robot_union(x, z, rx=0.03, ry=0.025, rz=0.05, rot=0):
-    cam0 = cam_pos(0, 0, 0, ry, 0)[0]
-    cam1 = cam_pos(0, 0, 0, ry, 0)[1]
+    cam0 = cam_pos(0, 0, 0, ry, 0,cam_h)[0]
+    cam1 = cam_pos(0, 0, 0, ry, 0,cam_h)[1]
     return Union(
         # Body box
         Box([-rx / 2, 0, 0], [rx / 2, ry, -rz], color([0.4, 0.4, 0.4])),
@@ -353,8 +423,8 @@ def robot_union(x, z, rx=0.03, ry=0.025, rz=0.05, rot=0):
         Box(
             [cam0[0], cam0[1], cam0[2]],
             [cam1[0], cam1[1], cam1[2]],
-            # cam_pos(0, 0, 0, ry*.9, 0)[0],
-            # cam_pos(0, 0, 0, ry*.9, 0)[1],
+            # cam_pos(0, 0, 0, ry*.9, 0,cam_h)[0],
+            # cam_pos(0, 0, 0, ry*.9, 0,cam_h)[1],
             color([0.1, 1.1, 0.1]),
         ),
         "rotate",
@@ -512,12 +582,15 @@ def lookat_point(pos):
 
 def create_scene(t, duration, view="robot"):
     pos = robot_position(t, duration)
-    camera_pos = cam_pos(pos[0], 0, pos[2], ry, 0)[2]
+
+    #def cam_pos(x, y, z, ry, rz, h=0.02):
+
+    camera_pos = cam_pos(pos[0], 0, pos[2], ry, 0,cam_h)[2]
     look_at = lookat_point(pos)  # Look at point in front of the robot
     angle = pos[3]  # angle in degrees
 
     # print("Camera position:", camera_pos)
-    # def cam_pos(x,y,z,ry,rz):
+    # def cam_pos(x,y,z,ry,rz,cam_h):
 
     if view == "bird":
         camera = birds_eye_camera
@@ -544,8 +617,8 @@ def create_scene(t, duration, view="robot"):
         color([1, 1, 0]),  # Yellow color for visibility
     )
 
-    # floor = Box([-0.5, -0.01, -0.5], [0.5, 0, 0.5], color([0.9, 0.9, 0.0])),
-    floor = Box([-0.5, -0.01, -0.5], [0.5, 0, 0.5], texture2)
+    #floor = Box([-0.5, -0.01, -0.5], [0.5, 0, 0.5], color([0.9, 0.9, 0.0])),
+    floor = Box([-0.5, -0.01, -0.5], [0.5, 0, 0.5], texture4)
 
 
     return Scene(
@@ -627,7 +700,7 @@ for i in range(frames):
     # project_point(point, cam_pos, look_at, fov_deg, img_width, img_height)
     # get coordinates
     pos = robot_position(t, duration)
-    camera_pos = cam_pos(pos[0], 0, pos[2], ry, 0)[2]
+    camera_pos = cam_pos(pos[0], 0, pos[2], ry, 0,cam_h)[2]
     look_at = lookat_point(pos)  # Look at point in front of the robot
     angle = pos[3]  # angle in degrees
 
