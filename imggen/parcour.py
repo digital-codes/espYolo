@@ -677,8 +677,8 @@ def create_scene(t, duration, view="robot"):
 
 
 # Animation parameters
-duration = 4.0
-fps = 15
+duration = 40
+fps = 30
 frames = int(duration * fps)
 
 img_width = 600
@@ -687,7 +687,7 @@ img_height = 450
 for i in range(frames):
     print("\n\nRendering frame", i, "of", frames)
     t = i / fps
-    for view in ["bird", "robot", "side"]:  # , "bird", "side"]:
+    for view in ["robot"]: # , "bird", "side"]:  # , "bird", "side"]:
         scene, pos, camera_pos, look_at = create_scene(t, duration, view)
 
         scene.render(
@@ -733,7 +733,7 @@ for i in range(frames):
             size = [obj["r0"] * 1.7 for i in range(3)]
         # pnt = [obj["pos1"][i] - (obj["pos1"][i] - obj["pos0"][i]) / 2 for i in range(3)]
         screen_coords, rel_pos = project_point(
-            pnt, camera_pos, look_at, camera_fov, 600, 450
+            pnt, camera_pos, look_at, camera_fov, img_width, img_height
         )
         if screen_coords:
             # print(
