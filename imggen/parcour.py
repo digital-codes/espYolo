@@ -23,7 +23,7 @@ from vapory import (
     ColorMap,
 )
 
-included = ['textures.inc']
+included = ["textures.inc"]
 # see https://www.f-lohmueller.de/pov_tut/tex/tex_160d.htm
 
 # A map_type 0 gives the default planar mapping.
@@ -51,7 +51,7 @@ a, b = 0.25, 0.25  # 50 cm elliptical path
 # Robot dims
 rx, ry, rz = 0.05, 0.06, 0.08  # Robot dimensions
 # camera height
-cam_h = .02  # Camera height above robot body
+cam_h = 0.02  # Camera height above robot body
 
 camera_fov = 43.6  # horizontal FOV ~ matching 2.32 mm lens on ~1 mm sensor
 
@@ -215,37 +215,46 @@ def oval_track_segments_(radius=0.25, width=0.02, gap=0, height=0.001, segments=
         )
     return objects
 
-def oval_track_segments(radius=0.25, width=0.02, height=0.001, segments=60):
-    objects = []
+
+def oval_track_segments(
+    radius=0.25, width=0.02, height=0.001, segments=60, color=[1, 1, 1], rot=[0, 0, 0]
+):
+    trackObjects = []
 
     arc_segments = segments // 2
-    straight_segments = 8
+    straight_segments = segments // 8
 
     # Length of straight path = approx arc length
-    straight_length = straight_segments * width # 2 * radius  # roughly matching semicircle length
+    straight_length = (
+        straight_segments * width
+    )  # 2 * radius  # roughly matching semicircle length
     segment_length = straight_length / straight_segments
 
     # STRAIGHT SEGMENTS (along Z axis)
     for i in range(straight_segments):
         z = -straight_length / 2 + i * segment_length
         # Left side
-        objects.append({
-            "class": "track",
-            "type": "box",
-            "pos0": [-radius - width/2, height, z - width/2],
-            "pos1": [-radius + width/2, height + 0.001, z + width/2],
-            "color": [1, 1, 1],
-            "rotate": [0, 0, 0],
-        })
+        trackObjects.append(
+            {
+                "class": "track",
+                "type": "box",
+                "pos0": [-radius - width / 2, height, z - width / 2],
+                "pos1": [-radius + width / 2, height + 0.001, z + width / 2],
+                "color": color,
+                "rotate": rot,
+            }
+        )
         # Right side
-        objects.append({
-            "class": "track",
-            "type": "box",
-            "pos0": [radius - width/2, height, z - width/2],
-            "pos1": [radius + width/2, height + 0.001, z + width/2],
-            "color": [1, 1, 1],
-            "rotate": [0, 0, 0],
-        })
+        trackObjects.append(
+            {
+                "class": "track",
+                "type": "box",
+                "pos0": [radius - width / 2, height, z - width / 2],
+                "pos1": [radius + width / 2, height + 0.001, z + width / 2],
+                "color": color,
+                "rotate": rot,
+            }
+        )
 
     # ARC SEGMENTS (top and bottom)
     for i in range(arc_segments + 1):
@@ -254,28 +263,32 @@ def oval_track_segments(radius=0.25, width=0.02, height=0.001, segments=60):
         # Top arc (connects left to right)
         x = radius * np.cos(theta)
         z = straight_length / 2 + radius * np.sin(theta)
-        objects.append({
-            "class": "track",
-            "type": "box",
-            "pos0": [x - width/2, height, z - width/2],
-            "pos1": [x + width/2, height + 0.001, z + width/2],
-            "color": [1, 1, 1],
-            "rotate": [0, 0, 0],
-        })
+        trackObjects.append(
+            {
+                "class": "track",
+                "type": "box",
+                "pos0": [x - width / 2, height, z - width / 2],
+                "pos1": [x + width / 2, height + 0.001, z + width / 2],
+                "color": color,
+                "rotate": rot,
+            }
+        )
 
         # Bottom arc (connects right to left)
         x = -radius * np.cos(theta)
         z = -straight_length / 2 - radius * np.sin(theta)
-        objects.append({
-            "class": "track",
-            "type": "box",
-            "pos0": [x - width/2, height, z - width/2],
-            "pos1": [x + width/2, height + 0.001, z + width/2],
-            "color": [1, 1, 1],
-            "rotate": [0, 0, 0],
-        })
+        trackObjects.append(
+            {
+                "class": "track",
+                "type": "box",
+                "pos0": [x - width / 2, height, z - width / 2],
+                "pos1": [x + width / 2, height + 0.001, z + width / 2],
+                "color": color,
+                "rotate": rot,
+            }
+        )
 
-    return objects
+    return trackObjects
 
 
 trackLines = oval_track_segments()
@@ -293,7 +306,6 @@ for t in trackLines:
     )
 
 
-objects = []
 texture1 = Texture(
     Pigment(
         ImageMap("jpeg", '"textures/img1.jpg"', "interpolate", 2),
@@ -326,26 +338,29 @@ texture3 = Texture(
 
 # dark stone
 texture4 = Texture(
-    Pigment('color', [0.1, 0.1, 0.1]),        # Dark gray (almost black)
-    Normal('bumps', 0.3, 'scale', 0.05),      # Subtle surface structure
-    Finish('ambient', 0.1, 'diffuse', 0.7, 'roughness', 0.2)
+    Pigment("color", [0.1, 0.1, 0.1]),  # Dark gray (almost black)
+    Normal("bumps", 0.3, "scale", 0.05),  # Subtle surface structure
+    Finish("ambient", 0.1, "diffuse", 0.7, "roughness", 0.2),
 )
 
-#texture6 = Texture(
+# texture6 = Texture(
 #    Pigment('wood', 'color_map', wood_colormap, 'scale', [0.3, 1, 0.3]),
 #    Finish('ambient', 0.1, 'diffuse', 0.9)
-#)
+# )
 
+objects = []
 for obj in object_coords:
     if obj["type"] == "box":
-        # objects.append(Box(obj["pos0"], obj["pos1"], Texture("T_wood1"))) # color(obj["color"])))
         if (obj["class"] == "track") or (obj["class"] == "fence"):
             objects.append(Box(obj["pos0"], obj["pos1"], color(obj["color"])))
         else:
-            objects.append(Box(obj["pos0"], obj["pos1"], Texture("Dark_Wood"))) #color(obj["color"])))
+            objects.append(
+                Box(obj["pos0"], obj["pos1"], Texture("Dark_Wood"))
+            )  # color(obj["color"])))
     elif obj["type"] == "cone":
         objects.append(
-            Cone(obj["pos0"], obj["r0"], obj["pos1"], obj["r1"], Texture("Cork"))) # color(obj["color"]))
+            Cone(obj["pos0"], obj["r0"], obj["pos1"], obj["r1"], Texture("Cork"))
+        )  # color(obj["color"]))
     elif obj["type"] == "sphere":
         # objects.append(Sphere(obj["pos0"], obj["r0"], color(obj["color"])))
         objects.append(Sphere(obj["pos0"], obj["r0"], texture3))
@@ -370,9 +385,18 @@ side_camera = Camera(
 )
 
 
-def robot_position(t, duration):
-    angle = 2 * np.pi * (1.5 * t / duration)
-    return [a * np.cos(angle), 0, b * np.sin(angle), np.degrees(angle)]
+def robot_position(t, duration, randomize=False):
+    if randomize:
+        angle = np.random.uniform(0, 2 * np.pi)
+        x = np.random.uniform(-0.45, 0.45)
+        y = np.random.uniform(0, 0.02)
+        z = np.random.uniform(-0.45, 0.45)
+    else:
+        angle = 2 * np.pi * (1.5 * t / duration)
+        x = a * np.cos(angle)
+        y = 0
+        z = b * np.sin(angle)
+    return [x, y, z, np.degrees(angle)]
 
 
 def cam_pos(x, y, z, ry, rz, h=0.02):
@@ -387,8 +411,8 @@ def cam_pos(x, y, z, ry, rz, h=0.02):
 
 
 def robot_union(x, z, rx=0.03, ry=0.025, rz=0.05, rot=0):
-    cam0 = cam_pos(0, 0, 0, ry, 0,cam_h)[0]
-    cam1 = cam_pos(0, 0, 0, ry, 0,cam_h)[1]
+    cam0 = cam_pos(0, 0, 0, ry, 0, cam_h)[0]
+    cam1 = cam_pos(0, 0, 0, ry, 0, cam_h)[1]
     return Union(
         # Body box
         Box([-rx / 2, 0, 0], [rx / 2, ry, -rz], color([0.4, 0.4, 0.4])),
@@ -566,12 +590,11 @@ def estimate_bounding_box(
     return [int(x_min), int(y_min), int(x_max - x_min), int(y_max - y_min)], p_cam
 
 
-def lookat_point(pos):
+def lookat_point(pos, cam_rot=1):
     """
     Returns a camera object that looks at a specified point.
     cam_pos: camera position in world
     """
-    cam_rot = 4  # optional speedup
     angle = pos[3] * cam_rot  # angle in degrees
     cam_dz = np.cos(np.radians(-angle))
     cam_dx = np.sin(np.radians(-angle))
@@ -580,13 +603,14 @@ def lookat_point(pos):
     return [x, 0, z]  # Look at point in front of the robot
 
 
-def create_scene(t, duration, view="robot"):
-    pos = robot_position(t, duration)
+def create_scene(t, duration, view="robot", randomize=False):
+    pos = robot_position(t, duration, randomize)
 
-    #def cam_pos(x, y, z, ry, rz, h=0.02):
-
-    camera_pos = cam_pos(pos[0], 0, pos[2], ry, 0,cam_h)[2]
-    look_at = lookat_point(pos)  # Look at point in front of the robot
+    # def cam_pos(x, y, z, ry, rz, h=0.02):
+    if randomize:
+        cam_h = np.random.uniform(0.02, 0.04)  # Random camera height
+    camera_pos = cam_pos(pos[0], 0, pos[2], ry, 0, cam_h)[2]
+    look_at = lookat_point(pos, 1)  # Look at point in front of the robot
     angle = pos[3]  # angle in degrees
 
     # print("Camera position:", camera_pos)
@@ -617,36 +641,102 @@ def create_scene(t, duration, view="robot"):
         color([1, 1, 0]),  # Yellow color for visibility
     )
 
-    #floor = Box([-0.5, -0.01, -0.5], [0.5, 0, 0.5], color([0.9, 0.9, 0.0])),
+
+    if randomize:
+        idxs = [i for i,t in enumerate(object_coords) if t["class"] == "track"]
+        for i in idxs:
+            obj = object_coords[i]
+            item_color = [
+            np.random.uniform(0.9, 1.1),
+            np.random.uniform(0.9, 1.1),
+            np.random.uniform(0.9, 1.1),
+            ]
+            objects[i] = Box(obj["pos0"], obj["pos1"], color(item_color))
+            
+        idxs = [i for i,t in enumerate(object_coords) if t["class"] == "fence"]
+        for i in idxs:
+            obj = object_coords[i]
+            item_color = [
+            np.random.uniform(0.9, 1.1),
+            np.random.uniform(0.0, .1),
+            np.random.uniform(0.0, .1),
+            ]
+            objects[i] = Box(obj["pos0"], obj["pos1"], color(item_color))
+
+    # floor = Box([-0.5, -0.01, -0.5], [0.5, 0, 0.5], color([0.9, 0.9, 0.0])),
+    if randomize:
+        texture4 = Texture(
+            Pigment(
+                "color",
+                [
+                    np.random.uniform(0.08, 0.12),
+                    np.random.uniform(0.08, 0.12),
+                    np.random.uniform(0.08, 0.12),
+                ],
+            ),  # Dark gray (almost black)
+            Normal(
+                "bumps",
+                np.random.uniform(0.2, 0.4),
+                "scale",
+                np.random.uniform(0.03, 0.07),
+            ),  # Subtle surface structure
+            Finish(
+                "ambient", 0.1, "diffuse", 0.7, "roughness", np.random.uniform(0.1, 0.3)
+            ),
+        )
     floor = Box([-0.5, -0.01, -0.5], [0.5, 0, 0.5], texture4)
 
+    if randomize:
+        globalLight = LightSource(
+            [
+                np.random.uniform(-0.1, 0.1),
+                np.random.uniform(9.5, 10.5),
+                np.random.uniform(-0.1, 0.1),
+            ],
+            "color",
+            [
+                np.random.uniform(0.9, 1.1),
+                np.random.uniform(0.9, 1.1),
+                np.random.uniform(0.9, 1.1),
+            ],
+            "shadowless",
+        )
+        spotLight = LightSource(
+            [
+                np.random.uniform(.6,.8),
+                np.random.uniform(.3,.5),
+                np.random.uniform(.6,.8),
+            ],
+            "color",
+            [
+                np.random.uniform(.4,.6),
+                np.random.uniform(.4,.6),
+                np.random.uniform(.4,.6),
+            ],
+            "spotlight",
+            "radius",
+            40,
+            "point_at",
+            [0, 0, 0],
+        )
+    else:
+        globalLight = LightSource([0, 10, 0], "color", [1.0, 1.0, 1.0], "shadowless")
+        spotLight = LightSource(
+            [0.7, 0.4, 0.7],
+            "color",
+            [0.5, 0.5, 0.5],
+            "spotlight",
+            "radius",
+            40,
+            "point_at",
+            [0, 0, 0],
+        )
 
     sc = Scene(
         camera,
         objects=[
-            LightSource([0, 10, 0], "color", [1.0, 1.0, 1.0], "shadowless"),
-            LightSource(
-                [0.7, 0.4, 0.7],
-                "color",
-                [0.5, 0.5, 0.5],
-                "spotlight",
-                "radius",
-                40,
-                "point_at",
-                [0, 0, 0],
-            ),
-            # LightSource([2, 4, -3], 'color', [1.5, 1.5, 1.5]),
-            # LightSource(
-            #     torch_pos,
-            #     'color', [1, 1, 5],
-            #     'spotlight',
-            #     'point_at', look_at,
-            #     'radius', 20,           # beam width
-            #     'falloff', 30,          # soft edge
-            #     'tightness', 10,        # intensity at center
-            #     'shadowless'
-            # ),
-            # robot
+            globalLight,
+            spotLight,
             robot_union(pos[0], pos[2], rx, ry, rz, angle),
             # pointer,
             # antenna,
@@ -681,14 +771,22 @@ duration = 40
 fps = 30
 frames = int(duration * fps)
 
-img_width = 600
-img_height = 450
+randomScene = True
+
+img_width = 160 # 600
+img_height = 160 # 450
+
+unique_classes = {obj["class"] for obj in object_coords}
+class_map = {key: idx for idx, key in enumerate(unique_classes) }
+print("Unique classes:", class_map)
+with open(os.path.join(output_dir,"label_map.json"),"w") as f:
+    json.dump(class_map, f, indent=4)
 
 for i in range(frames):
     print("\n\nRendering frame", i, "of", frames)
     t = i / fps
-    for view in ["robot"]: # , "bird", "side"]:  # , "bird", "side"]:
-        scene, pos, camera_pos, look_at = create_scene(t, duration, view)
+    for view in ["robot"]:  # , "bird", "side"]:  # , "bird", "side"]:
+        scene, pos, camera_pos, look_at = create_scene(t, duration, view, randomScene)
 
         scene.render(
             os.path.join(output_dir, f"{view}_{i:03d}.png"),
@@ -700,9 +798,9 @@ for i in range(frames):
 
     # project_point(point, cam_pos, look_at, fov_deg, img_width, img_height)
     # get coordinates
-    #pos = robot_position(t, duration)
-    #camera_pos = cam_pos(pos[0], 0, pos[2], ry, 0,cam_h)[2]
-    #look_at = lookat_point(pos)  # Look at point in front of the robot
+    # pos = robot_position(t, duration)
+    # camera_pos = cam_pos(pos[0], 0, pos[2], ry, 0,cam_h)[2]
+    # look_at = lookat_point(pos)  # Look at point in front of the robot
     angle = pos[3]  # angle in degrees
 
     # print("Robot position at frame", i, ":", pos)
@@ -713,6 +811,8 @@ for i in range(frames):
     # Project objects onto the camera view
 
     visible_obj = []
+    img_name = os.path.join(f"robot_{i:03d}.png")
+
     for obj in object_coords:
         # Calculate the center position of the bounding box
         if obj["type"] == "box":
@@ -810,7 +910,6 @@ for i in range(frames):
                 # object completely below to earlier object
                 continue
 
-
             # Check if the object is completely inside the earlier object
             if (
                 bb[0] >= earlier_bb[0]
@@ -829,7 +928,10 @@ for i in range(frames):
             # Calculate overlap area
             # if both dimensions overlap, clip both dimensions
             # if width completly inside earlier width, clip only height
-            if bb[0] >= earlier_bb[0] and bb[0] + bb[2] <= earlier_bb[0] + earlier_bb[2]:
+            if (
+                bb[0] >= earlier_bb[0]
+                and bb[0] + bb[2] <= earlier_bb[0] + earlier_bb[2]
+            ):
                 print(
                     f"Object {obj['class']} width completely inside earlier object, clipping height only"
                 )
@@ -845,7 +947,10 @@ for i in range(frames):
                     bb[2] = temp - bb[0]
 
             # if height completly inside earlier height, clip only width
-            if bb[1] >= earlier_bb[1] and bb[1] + bb[3] <= earlier_bb[1] + earlier_bb[3]:
+            if (
+                bb[1] >= earlier_bb[1]
+                and bb[1] + bb[3] <= earlier_bb[1] + earlier_bb[3]
+            ):
                 print(
                     f"Object {obj['class']} height completely inside earlier object, clipping width only"
                 )
@@ -859,7 +964,6 @@ for i in range(frames):
                 temp = bb[1] + bb[3]
                 bb[1] = earlier_bb[1] + earlier_bb[3]  # cut top
                 bb[3] = temp - bb[1]
-
 
             print(
                 f"new width: {bb[2]}, new height: {bb[3]}, old width,height: {bb_width}, {bb_height}"
@@ -889,6 +993,7 @@ for i in range(frames):
             draw.text((bbox[2], bbox[3]), obj["class"], fill="red")
             annotations.append(
                 {
+                    "label": class_map[obj["class"]],
                     "class": obj["class"],
                     "type": obj["type"],
                     "bounding_box": bbox,
@@ -898,6 +1003,23 @@ for i in range(frames):
 
     with open(os.path.join(output_dir, f"visible_objects_{i:03d}.json"), "w") as f:
         json.dump(annotations, f)
+
+    labels = []
+    bboxes = []
+    for a in annotations:
+        bboxes.append(a["bounding_box"])
+        labels.append(a["label"])
+    
+    with open(os.path.join(output_dir, f"robot_{i:03d}_labels.json"), "w") as f:
+        json.dump(
+            {
+                "img": img_name,
+                "bboxes": bboxes,
+                "labels": labels,
+            },
+            f,
+            indent=4,
+        )
 
     # Save the annotated image
     annotated_img_path = os.path.join(output_dir, f"robot_ann{i:03d}.png")
