@@ -16,19 +16,26 @@ from vapory import (
     Union,
     Plane,
     Pigment,
+    Finish,
+    Normal,
     Texture,
     ImageMap,
+    ColorMap,
 )
+
+included = ['textures.inc']
+# see https://www.f-lohmueller.de/pov_tut/tex/tex_160d.htm
 
 # A map_type 0 gives the default planar mapping.
 # A map_type 1 gives a spherical mapping (maps the image onto a sphere).
 # With map_type 2 you get a cylindrical mapping (maps the image onto a cylinder).
-# Finally map_type 5 is a torus or donut shaped mapping (maps the image onto a torus). 
-# (Note that in order for the image to be aligned properly, either the object 
-# has to be located at the origin when applying the pigment or the pigment 
-# has to be transformed to align with the object. 
-# It is generally easiest to create the object at the origin, apply the texture, 
-# then move it to wherever you want it.) 
+# Finally map_type 5 is a torus or donut shaped mapping (maps the image onto a torus).
+# (Note that in order for the image to be aligned properly, either the object
+# has to be located at the origin when applying the pigment or the pigment
+# has to be transformed to align with the object.
+# It is generally easiest to create the object at the origin, apply the texture,
+# then move it to wherever you want it.)
+
 
 def color(rgb):
     return Pigment("color", rgb)
@@ -185,9 +192,7 @@ object_coords = [
 ]
 
 
-def oval_track_segments(
-    radius=0.25, width=0.02, gap = 0 , height=0.001, segments=60
-):
+def oval_track_segments(radius=0.25, width=0.02, gap=0, height=0.001, segments=60):
     objects = []
     length = 2 * np.pi * radius / segments - gap  # Length of each segment
     for i in range(segments):
@@ -225,24 +230,54 @@ for t in trackLines:
 
 
 objects = []
-texture1 = Texture(Pigment(ImageMap('jpeg', '"textures/img1.jpg"', 'interpolate', 2),
-                           'rotate', [90, 0, 0], 'scale', [1, 1, 1], 'translate', [-1, 0, -1]))
-texture2 = Texture(Pigment(ImageMap('jpeg', '"textures/img2.jpg"','interpolate', 2),
-                           'rotate', [90, 0, 0], 'scale', [1, 1, 1], 'translate', [-1, 0, -1]))
-texture3 = Texture(Pigment(ImageMap('jpeg', '"textures/img2.jpg"','map_type', 0)))
-texture4 = Texture(Pigment(ImageMap('jpeg', '"textures/img2.jpg"','map_type', 0)))
+texture1 = Texture(
+    Pigment(
+        ImageMap("jpeg", '"textures/img1.jpg"', "interpolate", 2),
+        "rotate",
+        [90, 0, 0],
+        "scale",
+        [1, 1, 1],
+        "translate",
+        [-1, 0, -1],
+    )
+)
+texture2 = Texture(
+    Pigment(
+        ImageMap("jpeg", '"textures/img2.jpg"', "interpolate", 2),
+        "rotate",
+        [90, 0, 0],
+        "scale",
+        [1, 1, 1],
+        "translate",
+        [-1, 0, -1],
+    )
+)
+texture3 = Texture(Pigment(ImageMap("jpeg", '"textures/img2.jpg"', "map_type", 0)))
+texture4 = Texture(Pigment(ImageMap("jpeg", '"textures/img2.jpg"', "map_type", 0)))
 
+# Tennis ball with yellow-green fuzzy texture
+texture5 = Texture(
+    Pigment("color", [0.85, 1.0, 0.3]),  # Tennis ball yellow-green
+    Finish("ambient", 0.3, "diffuse", 0.6, "roughness", 0.1),
+    Normal("bumps", 0.2, "scale", 0.05),  # Slight fuzz effect
+)
+
+
+#texture6 = Texture(
+#    Pigment('wood', 'color_map', wood_colormap, 'scale', [0.3, 1, 0.3]),
+#    Finish('ambient', 0.1, 'diffuse', 0.9)
+#)
 
 for obj in object_coords:
     if obj["type"] == "box":
-        objects.append(Box(obj["pos0"], obj["pos1"], color(obj["color"])))
+        # objects.append(Box(obj["pos0"], obj["pos1"], Texture("T_wood1"))) # color(obj["color"])))
+        objects.append(Box(obj["pos0"], obj["pos1"], Texture("Dark_Wood"))) #color(obj["color"])))
     elif obj["type"] == "cone":
         objects.append(
-            Cone(obj["pos0"], obj["r0"], obj["pos1"], obj["r1"], color(obj["color"]))
-        )
+            Cone(obj["pos0"], obj["r0"], obj["pos1"], obj["r1"], Texture("Cork"))) # color(obj["color"]))
     elif obj["type"] == "sphere":
-        #objects.append(Sphere(obj["pos0"], obj["r0"], color(obj["color"])))
-        objects.append(Sphere(obj["pos0"], obj["r0"], texture2))
+        # objects.append(Sphere(obj["pos0"], obj["r0"], color(obj["color"])))
+        objects.append(Sphere(obj["pos0"], obj["r0"], texture5))
 
 
 birds_eye_camera = Camera(
@@ -490,11 +525,10 @@ def create_scene(t, duration, view="robot"):
     elif view == "side":
         camera = side_camera
 
-    #track = oval_track_segments()
+    # track = oval_track_segments()
 
     # Create plane with texture1
     plane = Plane([0, 1, 0], 0, texture1, "translate", [0, -0.01, 0])
-
 
     pointer = Cylinder(
         [camera_pos[0], camera_pos[1] + 0.005, camera_pos[2]],  # camera_pos,
@@ -515,7 +549,7 @@ def create_scene(t, duration, view="robot"):
 
     return Scene(
         camera,
-        [
+        objects=[
             LightSource([0, 10, 0], "color", [1.0, 1.0, 1.0], "shadowless"),
             LightSource(
                 [0.7, 0.4, 0.7],
@@ -554,7 +588,7 @@ def create_scene(t, duration, view="robot"):
             # Arena floor
             floor,
             # Oval track (50 cm diameter, 2 cm width)
-            #*track,
+            # *track,
             # objects
             *objects,
             # Box([0.2, 0, 0.2], [0.25, 0.05, 0.25], color([1, 0.6, 0.5])),
@@ -563,6 +597,7 @@ def create_scene(t, duration, view="robot"):
             # bg
             Background("color", [1, 10, 1]),
         ],
+        included=included,
     )
 
 
@@ -577,7 +612,7 @@ img_height = 450
 for i in range(frames):
     print("\n\nRendering frame", i, "of", frames)
     t = i / fps
-    for view in ["bird","robot","side"]:  # , "bird", "side"]:
+    for view in ["bird", "robot", "side"]:  # , "bird", "side"]:
         scene = create_scene(t, duration, view)
 
         scene.render(
@@ -626,11 +661,11 @@ for i in range(frames):
             pnt, camera_pos, look_at, camera_fov, 600, 450
         )
         if screen_coords:
-            #print(
+            # print(
             #    f"Object {obj['type']}, {pnt} at frame {i:03d} on screen at:",
             #    screen_coords,
             #    rel_pos,
-            #)
+            # )
             bb, dist = estimate_bounding_box(
                 pnt, size, camera_pos, look_at, camera_fov, img_width, img_height
             )
@@ -678,16 +713,12 @@ for i in range(frames):
                 continue
             earlier_bb = earlier_obj["bounding_box"]
 
-            print(
-                f"Earlier object {earlier_obj['class']} bounding box: {earlier_bb}"
-            )
+            print(f"Earlier object {earlier_obj['class']} bounding box: {earlier_bb}")
             print(f"Current object {obj['class']} bounding box: {bb}")
 
             # try to skip if same class
             if earlier_obj["class"] == obj["class"]:
-                print(
-                    f"Skipping overlap check for same class {earlier_obj['class']}"
-                )
+                print(f"Skipping overlap check for same class {earlier_obj['class']}")
                 continue
 
             # check for disjunct
@@ -707,9 +738,11 @@ for i in range(frames):
             # Check overlap. if earlier object is inside with one or both dimensions, continue
             # otherwise, we would need to split the bounding box
             if (
-                ((earlier_bb[0] >= bb[0])
-                and (earlier_bb[0] + earlier_bb[1]) <= (bb[1] + bb[3]))
-                or ((earlier_bb[1] >= bb[1]) and (earlier_bb[1] + earlier_bb[3] <= bb[1] + bb[3]))
+                (earlier_bb[0] >= bb[0])
+                and (earlier_bb[0] + earlier_bb[1]) <= (bb[1] + bb[3])
+            ) or (
+                (earlier_bb[1] >= bb[1])
+                and (earlier_bb[1] + earlier_bb[3] <= bb[1] + bb[3])
             ):
                 # earlier object is completely inside current object, continue
                 print(
@@ -734,24 +767,23 @@ for i in range(frames):
 
             # Calculate overlap area
             if bb[0] < earlier_bb[0]:
-                bb[2] = earlier_bb[0] - bb[0] # cut right
+                bb[2] = earlier_bb[0] - bb[0]  # cut right
             else:
                 temp = bb[0] + bb[2]  # right border
-                bb[0] = earlier_bb[0] + earlier_bb[2] # cut left
+                bb[0] = earlier_bb[0] + earlier_bb[2]  # cut left
                 bb[2] = temp - bb[0]
 
             if bb[1] < earlier_bb[1]:
-                bb[3] = earlier_bb[1] - bb[1] # cut bottom
+                bb[3] = earlier_bb[1] - bb[1]  # cut bottom
             else:
                 temp = bb[1] + bb[3]
                 bb[1] = earlier_bb[1] + earlier_bb[3]  # cut top
                 bb[3] = temp - bb[1]
 
-
             print(
                 f"new width: {bb[2]}, new height: {bb[3]}, old width,height: {bb_width}, {bb_height}"
             )
-            
+
             # Drop item if remaining width or height is smaller than 40% of original
             cutoff = 0.1
             if bb[2] < cutoff * bb_width or bb[3] < cutoff * bb_height:
