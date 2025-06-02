@@ -80,113 +80,113 @@ object_coords = [
     {
         "class": "fence",
         "type": "box",
-        "pos0": [-0.5, 0, -0.5],
-        "pos1": [-0.5, 0.02, -0.25],
+        "pos0": [-0.51, 0, -0.5],
+        "pos1": [-0.49, 0.002, -0.25],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [-0.5, 0, -0.25],
-        "pos1": [-0.5, 0.02, 0],
+        "pos0": [-0.51, 0, -0.25],
+        "pos1": [-0.49, 0.002, 0],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [-0.5, 0, 0],
-        "pos1": [-0.5, 0.02, 0.25],
+        "pos0": [-0.51, 0, 0],
+        "pos1": [-0.49, 0.002, 0.25],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [-0.5, 0, 0.25],
-        "pos1": [-0.5, 0.02, 0.5],
+        "pos0": [-0.51, 0, 0.25],
+        "pos1": [-0.49, 0.002, 0.5],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [-0.5, 0, 0.5],
-        "pos1": [-0.25, 0.02, 0.5],
+        "pos0": [-0.5, 0, 0.51],
+        "pos1": [-0.25, 0.002, 0.49],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [-0.25, 0, 0.5],
-        "pos1": [0, 0.02, 0.5],
+        "pos0": [-0.25, 0, 0.51],
+        "pos1": [0, 0.002, 0.49],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [0, 0, 0.5],
-        "pos1": [0.25, 0.02, 0.5],
+        "pos0": [0, 0, 0.51],
+        "pos1": [0.25, 0.002, 0.49],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [0.25, 0, 0.5],
-        "pos1": [0.5, 0.02, 0.5],
+        "pos0": [0.25, 0, 0.51],
+        "pos1": [0.5, 0.002, 0.49],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [0.5, 0, 0.5],
-        "pos1": [0.5, 0.02, 0.25],
+        "pos0": [0.51, 0, 0.5],
+        "pos1": [0.49, 0.002, 0.25],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [0.5, 0, 0.25],
-        "pos1": [0.5, 0.02, 0],
+        "pos0": [0.51, 0, 0.25],
+        "pos1": [0.49, 0.002, 0],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [0.5, 0, 0],
-        "pos1": [0.5, 0.02, -0.25],
+        "pos0": [0.51, 0, 0],
+        "pos1": [0.49, 0.002, -0.25],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [0.5, 0, -0.25],
-        "pos1": [0.5, 0.02, -0.5],
+        "pos0": [0.51, 0, -0.25],
+        "pos1": [0.49, 0.002, -0.5],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [0.5, 0, -0.5],
-        "pos1": [0.25, 0.02, -0.5],
+        "pos0": [0.5, 0, -0.51],
+        "pos1": [0.25, 0.002, -0.49],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [0.25, 0, -0.5],
-        "pos1": [0, 0.02, -0.5],
+        "pos0": [0.25, 0, -0.51],
+        "pos1": [0, 0.002, -0.49],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [0, 0, -0.5],
-        "pos1": [-0.25, 0.02, -0.5],
+        "pos0": [0, 0, -0.51],
+        "pos1": [-0.25, 0.002, -0.49],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [-0.25, 0, -0.5],
-        "pos1": [-0.5, 0.02, -0.5],
+        "pos0": [-0.25, 0, -0.51],
+        "pos1": [-0.5, 0.002, -0.49],
         "color": [1, 0.1, 0.1],
     },  # fence
 ]
@@ -207,7 +207,7 @@ def oval_track_segments(radius=0.25, width=0.02, gap=0, height=0.001, segments=6
                 "type": "box",
                 "pos0": [x1 - w / 2, height, z1 - l / 2],
                 "pos1": [x1 + w / 2, height, z1 + l / 2],
-                "color": [1, 0.1, 0.1],
+                "color": [1, 8, 0.9],
                 "rotate": [0, 0, 0],
             },
         )
@@ -232,7 +232,7 @@ for t in trackLines:
 objects = []
 texture1 = Texture(
     Pigment(
-        ImageMap("jpeg", '"textures/img1.jpg"', "interpolate", 2),
+        ImageMap("jpeg", '"textures/img2.jpg"', "interpolate", 2),
         "rotate",
         [90, 0, 0],
         "scale",
@@ -243,7 +243,7 @@ texture1 = Texture(
 )
 texture2 = Texture(
     Pigment(
-        ImageMap("jpeg", '"textures/img2.jpg"', "interpolate", 2),
+        ImageMap("jpeg", '"textures/img1.jpg"', "interpolate", 2),
         "rotate",
         [90, 0, 0],
         "scale",
@@ -252,8 +252,6 @@ texture2 = Texture(
         [-1, 0, -1],
     )
 )
-texture3 = Texture(Pigment(ImageMap("jpeg", '"textures/img2.jpg"', "map_type", 0)))
-texture4 = Texture(Pigment(ImageMap("jpeg", '"textures/img2.jpg"', "map_type", 0)))
 
 # Tennis ball with yellow-green fuzzy texture
 texture5 = Texture(
@@ -271,7 +269,10 @@ texture5 = Texture(
 for obj in object_coords:
     if obj["type"] == "box":
         # objects.append(Box(obj["pos0"], obj["pos1"], Texture("T_wood1"))) # color(obj["color"])))
-        objects.append(Box(obj["pos0"], obj["pos1"], Texture("Dark_Wood"))) #color(obj["color"])))
+        if (obj["class"] == "track") or (obj["class"] == "fence"):
+            objects.append(Box(obj["pos0"], obj["pos1"], color(obj["color"])))
+        else:
+            objects.append(Box(obj["pos0"], obj["pos1"], Texture("Dark_Wood"))) #color(obj["color"])))
     elif obj["type"] == "cone":
         objects.append(
             Cone(obj["pos0"], obj["r0"], obj["pos1"], obj["r1"], Texture("Cork"))) # color(obj["color"]))
