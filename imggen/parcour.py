@@ -621,7 +621,7 @@ def create_scene(t, duration, view="robot"):
     floor = Box([-0.5, -0.01, -0.5], [0.5, 0, 0.5], texture4)
 
 
-    return Scene(
+    sc = Scene(
         camera,
         objects=[
             LightSource([0, 10, 0], "color", [1.0, 1.0, 1.0], "shadowless"),
@@ -673,6 +673,7 @@ def create_scene(t, duration, view="robot"):
         ],
         included=included,
     )
+    return sc, pos, camera_pos, look_at
 
 
 # Animation parameters
@@ -687,7 +688,7 @@ for i in range(frames):
     print("\n\nRendering frame", i, "of", frames)
     t = i / fps
     for view in ["bird", "robot", "side"]:  # , "bird", "side"]:
-        scene = create_scene(t, duration, view)
+        scene, pos, camera_pos, look_at = create_scene(t, duration, view)
 
         scene.render(
             os.path.join(output_dir, f"{view}_{i:03d}.png"),
@@ -699,9 +700,9 @@ for i in range(frames):
 
     # project_point(point, cam_pos, look_at, fov_deg, img_width, img_height)
     # get coordinates
-    pos = robot_position(t, duration)
-    camera_pos = cam_pos(pos[0], 0, pos[2], ry, 0,cam_h)[2]
-    look_at = lookat_point(pos)  # Look at point in front of the robot
+    #pos = robot_position(t, duration)
+    #camera_pos = cam_pos(pos[0], 0, pos[2], ry, 0,cam_h)[2]
+    #look_at = lookat_point(pos)  # Look at point in front of the robot
     angle = pos[3]  # angle in degrees
 
     # print("Robot position at frame", i, ":", pos)
@@ -809,20 +810,6 @@ for i in range(frames):
                 # object completely below to earlier object
                 continue
 
-            # Check overlap. if earlier object is inside with one or both dimensions, continue
-            # otherwise, we would need to split the bounding box
-            if (
-                (earlier_bb[0] >= bb[0])
-                and (earlier_bb[0] + earlier_bb[1]) <= (bb[1] + bb[3])
-            ) or (
-                (earlier_bb[1] >= bb[1])
-                and (earlier_bb[1] + earlier_bb[3] <= bb[1] + bb[3])
-            ):
-                # earlier object is completely inside current object, continue
-                print(
-                    f"Earlier object {earlier_obj['class']} inside current object {obj['class']}, skipping overlap check"
-                )
-                continue
 
             # Check if the object is completely inside the earlier object
             if (
@@ -840,19 +827,39 @@ for i in range(frames):
             print("Clipping bounding box for overlap with earlier object")
 
             # Calculate overlap area
-            if bb[0] < earlier_bb[0]:
-                bb[2] = earlier_bb[0] - bb[0]  # cut right
+            # if both dimensions overlap, clip both dimensions
+            # if width completly inside earlier width, clip only height
+            if bb[0] >= earlier_bb[0] and bb[0] + bb[2] <= earlier_bb[0] + earlier_bb[2]:
+                print(
+                    f"Object {obj['class']} width completely inside earlier object, clipping height only"
+                )
             else:
-                temp = bb[0] + bb[2]  # right border
-                bb[0] = earlier_bb[0] + earlier_bb[2]  # cut left
-                bb[2] = temp - bb[0]
+                print(
+                    f"Object {obj['class']} width overlaps with earlier object, clipping width"
+                )
+                if bb[0] < earlier_bb[0]:
+                    bb[2] = earlier_bb[0] - bb[0]  # cut right
+                else:
+                    temp = bb[0] + bb[2]  # right border
+                    bb[0] = earlier_bb[0] + earlier_bb[2]  # cut left
+                    bb[2] = temp - bb[0]
 
+            # if height completly inside earlier height, clip only width
+            if bb[1] >= earlier_bb[1] and bb[1] + bb[3] <= earlier_bb[1] + earlier_bb[3]:
+                print(
+                    f"Object {obj['class']} height completely inside earlier object, clipping width only"
+                )
+            else:
+                print(
+                    f"Object {obj['class']} height overlaps with earlier object, clipping height"
+                )
             if bb[1] < earlier_bb[1]:
                 bb[3] = earlier_bb[1] - bb[1]  # cut bottom
             else:
                 temp = bb[1] + bb[3]
                 bb[1] = earlier_bb[1] + earlier_bb[3]  # cut top
                 bb[3] = temp - bb[1]
+
 
             print(
                 f"new width: {bb[2]}, new height: {bb[3]}, old width,height: {bb_width}, {bb_height}"
