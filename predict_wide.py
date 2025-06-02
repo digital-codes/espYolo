@@ -18,7 +18,7 @@ IMAGE_SIZE = 160
 OUTPUT_DIR = "verify"
 THRESHOLD = 0.4  # Prediction confidence threshold
 
-GRID = 4
+GRID = 5
 INPUT_PATH = "./voc"
 IMAGE_SIZE = 160
 
