@@ -29,7 +29,7 @@ else:
     imgSource = INPUT_PATH
 
 
-GRID = 4
+GRID = 5
 IMAGE_SIZE = 160
 
 def load_dataset(image_dir, classes, cells, regions):
