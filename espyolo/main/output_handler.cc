@@ -13,11 +13,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+#include "constants.h"
 #include "output_handler.h"
 #include "tensorflow/lite/micro/micro_log.h"
 
-void HandleOutput(float x_value, float y_value) {
+void HandleOutput(const int8_t* vector, int len) {
+  MicroPrintf("Output vector len: %d",len);
+
+  for (int i = 0; i < len; ++i) {
+      int8_t q = vector[i];
+      // Dequantize the output from integer to floating-point
+      float y = (q - yoloOutZeroPoint) * yoloOutScale;
+
+    // Log the current X and Y values
+    /*
+    MicroPrintf("x_value: %d, y_value: %f", static_cast<int>(i),
+                static_cast<double>(y));
+                */
+  }
+
+  /* 
   // Log the current X and Y values
   MicroPrintf("x_value: %f, y_value: %f", static_cast<double>(x_value),
               static_cast<double>(y_value));
+  */
 }

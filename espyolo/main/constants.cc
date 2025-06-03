@@ -17,3 +17,12 @@ limitations under the License.
 
 // This is a small number so that it's easy to read the logs
 const int kInferencesPerCycle = 20;
+
+// adjust from model info
+const float yoloInScale = 0.00390625f;
+const int yoloInZeroPoint = -128;
+const float yoloOutScale = 0.00390625f;
+const int yoloOutZeroPoint = -128;
+
+const int yoloWidth = 160;
+const int yoloHeight = 160;

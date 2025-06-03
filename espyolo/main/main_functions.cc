@@ -19,6 +19,7 @@ limitations under the License.
 #include "tensorflow/lite/schema/schema_generated.h"
 
 #include "yolo_model.h"
+#include "image_data.h"
 #include "main_functions.h"
 #include "constants.h"
 #include "output_handler.h"
@@ -40,7 +41,7 @@ namespace
   uint8_t tensor_arena[kTensorArenaSize];
   */
   // new
-  constexpr int kTensorArenaSize = 200 * 1024; // Adjust as needed
+  constexpr int kTensorArenaSize = 600 * 1024; // Adjust as needed
   uint8_t *tensor_arena = (uint8_t *)heap_caps_malloc(
       kTensorArenaSize,
       MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
@@ -85,12 +86,30 @@ void setup()
     return;
   }
 
+  /*
   // Pull in only the operation implementations we need.
   static tflite::MicroMutableOpResolver<1> resolver;
   if (resolver.AddFullyConnected() != kTfLiteOk)
   {
     return;
   }
+  */
+  static tflite::MicroMutableOpResolver<16> resolver;
+
+  resolver.AddConv2D();
+  resolver.AddDepthwiseConv2D();
+  resolver.AddReshape();
+  resolver.AddFullyConnected();
+  resolver.AddSoftmax();
+  resolver.AddQuantize();
+  resolver.AddDequantize();
+  resolver.AddAdd();
+  resolver.AddMul();
+  resolver.AddPad();
+  resolver.AddLogistic();  // often used in YOLO
+  resolver.AddMaxPool2D();
+  resolver.AddAveragePool2D();
+  // Add other ops based on your model
 
   // Build an interpreter to run the model with.
   static tflite::MicroInterpreter static_interpreter(
@@ -116,40 +135,51 @@ void setup()
 // The name of this function is important for Arduino compatibility.
 void loop()
 {
+  /*
   // Calculate an x value to feed into the model. We compare the current
   // inference_count to the number of inferences per cycle to determine
   // our position within the range of possible x values the model was
   // trained on, and use this to calculate a value.
   float position = static_cast<float>(inference_count) /
                    static_cast<float>(kInferencesPerCycle);
-  float x = position * kXrange;
+  float x = position * 123.5;
 
   // Quantize the input from floating-point to integer
   int8_t x_quantized = x / input->params.scale + input->params.zero_point;
   // Place the quantized input in the model's input tensor
   input->data.int8[0] = x_quantized;
+  */
+
+  int8_t* input_data = input->data.int8;
+
+  for (int i = 0; i < yoloWidth * yoloHeight * 3; ++i) {
+      float f = (float)image_data[i]; // [0..255]
+      int32_t q = roundf(f / 255.0f / yoloInScale) + yoloInZeroPoint;
+      if (q < -128) q = -128;
+      if (q > 127) q = 127;
+      input_data[i] = (int8_t)q;
+  }
+  MicroPrintf("Image data prepared, len: %d\n",yoloWidth * yoloHeight * 3);
+
+
 
   // Run inference, and report any error
   TfLiteStatus invoke_status = interpreter->Invoke();
   if (invoke_status != kTfLiteOk)
   {
-    MicroPrintf("Invoke failed on x: %f\n",
-                static_cast<double>(x));
+    MicroPrintf("Invoke failed on input image\n");
     return;
   }
 
   // Obtain the quantized output from model's output tensor
-  int8_t y_quantized = output->data.int8[0];
-  // Dequantize the output from integer to floating-point
-  float y = (y_quantized - output->params.zero_point) * output->params.scale;
+  // int8_t y_quantized = output->data.int8[0];
+  const int8_t* output_data = output->data.int8;
+  int output_len = output->bytes; // or: output->dims->data[1]
+
+
 
   // Output the results. A custom HandleOutput function can be implemented
   // for each supported hardware target.
-  HandleOutput(x, y);
+  HandleOutput(output_data, output_len);
 
-  // Increment the inference_counter, and reset it if we have reached
-  // the total number per cycle
-  inference_count += 1;
-  if (inference_count >= kInferencesPerCycle)
-    inference_count = 0;
 }
