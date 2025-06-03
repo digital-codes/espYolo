@@ -19,18 +19,23 @@ limitations under the License.
 
 void HandleOutput(const int8_t* vector, int len) {
   MicroPrintf("Output vector len: %d",len);
-
+  float sum = 0.0f;
+  // Iterate through the output vector and dequantize each value
   for (int i = 0; i < len; ++i) {
       int8_t q = vector[i];
       // Dequantize the output from integer to floating-point
       float y = (q - yoloOutZeroPoint) * yoloOutScale;
 
+      sum += y;
     // Log the current X and Y values
-    /*
-    MicroPrintf("x_value: %d, y_value: %f", static_cast<int>(i),
-                static_cast<double>(y));
-                */
+    /* */
+    // MicroPrintf("%f ",static_cast<double>(y));
+    if (y > .50f)
+      MicroPrintf("Activation at %d: %f", i, static_cast<double>(y));
+        /*        */
   }
+
+  // MicroPrintf("Output sum: %f, avg: %f", static_cast<double>(sum),static_cast<double>(sum/len));
 
   /* 
   // Log the current X and Y values

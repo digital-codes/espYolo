@@ -41,7 +41,7 @@ namespace
   uint8_t tensor_arena[kTensorArenaSize];
   */
   // new
-  constexpr int kTensorArenaSize = 600 * 1024; // Adjust as needed
+  constexpr int kTensorArenaSize = 1024 * 1024; // Adjust as needed
   uint8_t *tensor_arena = (uint8_t *)heap_caps_malloc(
       kTensorArenaSize,
       MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
@@ -152,14 +152,18 @@ void loop()
 
   int8_t* input_data = input->data.int8;
 
+  float imgSum = 0;
+  // Prepare the input image data for the model
   for (int i = 0; i < yoloWidth * yoloHeight * 3; ++i) {
       float f = (float)image_data[i]; // [0..255]
       int32_t q = roundf(f / 255.0f / yoloInScale) + yoloInZeroPoint;
       if (q < -128) q = -128;
       if (q > 127) q = 127;
       input_data[i] = (int8_t)q;
+      imgSum += input_data[i];
   }
-  MicroPrintf("Image data prepared, len: %d\n",yoloWidth * yoloHeight * 3);
+  MicroPrintf("Image data prepared, len: %d, avg: %f\n",yoloWidth * yoloHeight * 3,
+              static_cast<float>(imgSum) / (yoloWidth * yoloHeight * 3));
 
 
 
