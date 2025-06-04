@@ -40,7 +40,8 @@ def load_dataset(image_dir, classes, cells, regions):
         for dp, dn, filenames in os.walk(image_dir)
         for f in filenames if f.endswith("labels.json")
     ]
-
+    label_files.sort()
+    
     if not label_files:
         raise ValueError("No 'labels.json' files found in the provided directory.")
 
@@ -54,6 +55,7 @@ def load_dataset(image_dir, classes, cells, regions):
                 print(f"[WARN] Image not found: {image_path}")
                 continue
 
+            print(f"Processing image: {image_path}")
             image = Image.open(image_path).convert("RGB") # .resize((imageSize, imageSize))
             image = np.array(image) / 255.0
 
@@ -111,13 +113,21 @@ for idx, (img, lbl) in enumerate(dataset):
     img_np = img.numpy()
     img_uint8 = (img_np * 255).astype(np.uint8)
 
+    print("Img shape:", img_np.shape)
     # Predict
     pred_vec = model.predict(img[None, ...])[0]
 
     # Draw boxes
-    fig, ax = plt.subplots(1)
+    fig = plt.figure(figsize=(IMAGE_SIZE/100, IMAGE_SIZE/100), dpi=100)  # 1.6 * 100 = 160 pixels
+    ax = fig.add_axes([0, 0, 1, 1])  # full canvas, no padding
     ax.imshow(img_uint8)
-
+    ax.axis('off')
+    
+    #fig, ax = plt.subplots(1, figsize=(IMAGE_SIZE / 100, IMAGE_SIZE / 100))
+    #ax.set_xlim(0, IMAGE_SIZE)
+    #ax.set_ylim(IMAGE_SIZE, 0)
+    #ax.imshow(img_uint8)
+    objects= []
     for class_id in range(len(list(classes.keys()))):
         print(f"Processing class {class_id} ({list(classes.keys())[class_id]})")
         for region_id in range(NUM_REGIONS):
@@ -133,7 +143,10 @@ for idx, (img, lbl) in enumerate(dataset):
                 rect = plt.Rectangle((x1, y1), x2 - x1, y2 - y1,
                                      linewidth=2, edgecolor='lime', facecolor='none')
                 ax.add_patch(rect)
-                ax.text(x1, y1 - 5, label, color='lime', fontsize=8, weight='bold')
+                lblx = x1 + 10 if x1 < IMAGE_SIZE - 50 else x1 - 60
+                lbly = y1 + 10 if y1 < IMAGE_SIZE - 20 else y1 - 20
+                ax.text(lblx, lbly, label, color='lime', fontsize=6)
+                objects.append((region_id, class_id))
             # add ground thruth
             if lbl[index] > 0.5:
                 # print(f"  Found GT for class {class_id} in region {region_id},{regions[region_id]}")
@@ -145,12 +158,20 @@ for idx, (img, lbl) in enumerate(dataset):
                 rect = plt.Rectangle((x1, y1), x2 - x1, y2 - y1,
                                         linewidth=2, edgecolor='red', linestyle='--', facecolor='none')
                 ax.add_patch(rect)
-                ax.text(x1, y2 + 3, f"{list(classes.keys())[class_id]} [GT]", fontsize=8, color='red')
+                lblx = x1 + 15 if x1 < IMAGE_SIZE - 50 else x1 - 70
+                lbly = y1 + 15 if y1 < IMAGE_SIZE - 20 else y1 - 30
+                ax.text(lblx, lbly, f"{list(classes.keys())[class_id]} [GT]", fontsize=6, color='red')
 
+    save_path = os.path.join(OUTPUT_DIR, f"pred_{idx:04d}.json")
+    with open(save_path, "w") as f:
+        json.dump(objects, f)
 
-    ax.axis('off')
-    save_path = os.path.join(OUTPUT_DIR, f"pred_{idx:03d}.png")
-    plt.savefig(save_path, bbox_inches='tight', pad_inches=0)
+    #ax.axis('off')
+    save_path = os.path.join(OUTPUT_DIR, f"pred_{idx:04d}.png")
+    #fig.set_size_inches(IMAGE_SIZE / fig.dpi, IMAGE_SIZE / fig.dpi)  # Match input image dimensions
+    #plt.savefig(save_path, bbox_inches='tight', pad_inches=0)
+    plt.savefig(save_path, dpi=100, bbox_inches='tight', pad_inches=0)
     plt.close(fig)
+    
 
 print(f"✅ Saved {idx+1} prediction images to '{OUTPUT_DIR}/'")

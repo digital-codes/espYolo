@@ -165,7 +165,7 @@ for idx, (img, lbl) in enumerate(dataset):
 
 
     ax.axis('off')
-    save_path = os.path.join(OUTPUT_DIR, f"pred_{idx:03d}.png")
+    save_path = os.path.join(OUTPUT_DIR, f"pred_{idx:04d}.png")
     plt.savefig(save_path, bbox_inches='tight', pad_inches=0)
     plt.close(fig)
 

@@ -58,8 +58,8 @@ def generate_images():
             })
 
         # Save image and label
-        img_name = f"synthetic_{i:03d}.png"
-        label_name = f"synthetic_{i:03d}.json"
+        img_name = f"synthetic_{i:04d}.png"
+        label_name = f"synthetic_{i:04d}.json"
         bg.save(os.path.join(OUTPUT_DIR, "images", img_name))
         with open(os.path.join(OUTPUT_DIR, "labels", label_name), "w") as f:
             json.dump(label_data, f, indent=2)

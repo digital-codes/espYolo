@@ -789,7 +789,7 @@ for i in range(frames):
         scene, pos, camera_pos, look_at = create_scene(t, duration, view, randomScene)
 
         scene.render(
-            os.path.join(output_dir, f"{view}_{i:03d}.png"),
+            os.path.join(output_dir, f"{view}_{i:04d}.png"),
             width=img_width,
             height=img_height,
             quality=9,
@@ -811,7 +811,7 @@ for i in range(frames):
     # Project objects onto the camera view
 
     visible_obj = []
-    img_name = os.path.join(f"robot_{i:03d}.png")
+    img_name = os.path.join(f"robot_{i:04d}.png")
 
     for obj in object_coords:
         # Calculate the center position of the bounding box
@@ -837,7 +837,7 @@ for i in range(frames):
         )
         if screen_coords:
             # print(
-            #    f"Object {obj['type']}, {pnt} at frame {i:03d} on screen at:",
+            #    f"Object {obj['type']}, {pnt} at frame {i:04d} on screen at:",
             #    screen_coords,
             #    rel_pos,
             # )
@@ -845,7 +845,7 @@ for i in range(frames):
                 pnt, size, camera_pos, look_at, camera_fov, img_width, img_height
             )
             if bb is not None:
-                # print(f"Object {obj['type']} bounding box at frame {i:03d}:", bb,dist)
+                # print(f"Object {obj['type']} bounding box at frame {i:04d}:", bb,dist)
                 visible_obj.append(
                     {
                         "class": obj["class"],
@@ -858,10 +858,10 @@ for i in range(frames):
                     }
                 )
         # else:
-        #    print(f"Object {obj['type']}, {pnt} at frame {i:03d} not visible")
+        #    print(f"Object {obj['type']}, {pnt} at frame {i:04d} not visible")
 
     # Open the rendered image
-    img_path = os.path.join(output_dir, f"robot_{i:03d}.png")
+    img_path = os.path.join(output_dir, f"robot_{i:04d}.png")
     img = Image.open(img_path)
     img = img.convert("RGB")
 
@@ -881,7 +881,7 @@ for i in range(frames):
         bb_width = bb[2]
         bb_height = bb[3]
         print(
-            f"Processing object {obj['class']} with bounding box {bb} at frame {i:03d}"
+            f"Processing object {obj['class']} with bounding box {bb} at frame {i:04d}"
         )
         for earlier_obj in visible_obj[:idx]:
             if earlier_obj["bounding_box"] is None:
@@ -984,7 +984,7 @@ for i in range(frames):
             bb = obj["bounding_box"]
             dist = obj["distance"]
             bbox = (bb[0], bb[1], bb[0] + bb[2], bb[1] + bb[3])
-            print(f"Object {obj['class']} bounding box at frame {i:03d}:", bbox)
+            print(f"Object {obj['class']} bounding box at frame {i:04d}:", bbox)
             draw.rectangle(
                 bbox,
                 outline="red",
@@ -1001,7 +1001,7 @@ for i in range(frames):
                 }
             )
 
-    with open(os.path.join(output_dir, f"visible_objects_{i:03d}.json"), "w") as f:
+    with open(os.path.join(output_dir, f"visible_objects_{i:04d}.json"), "w") as f:
         json.dump(annotations, f)
 
     labels = []
@@ -1010,7 +1010,7 @@ for i in range(frames):
         bboxes.append(a["bounding_box"])
         labels.append(a["label"])
     
-    with open(os.path.join(output_dir, f"robot_{i:03d}_labels.json"), "w") as f:
+    with open(os.path.join(output_dir, f"robot_{i:04d}_labels.json"), "w") as f:
         json.dump(
             {
                 "img": img_name,
@@ -1022,7 +1022,7 @@ for i in range(frames):
         )
 
     # Save the annotated image
-    annotated_img_path = os.path.join(output_dir, f"robot_ann{i:03d}.png")
+    annotated_img_path = os.path.join(output_dir, f"robot_ann{i:04d}.png")
     img.save(annotated_img_path)
 
 
