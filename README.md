@@ -23,3 +23,39 @@ print("Output:", interpreter.get_output_details())
 
 ## ESP deployment
 
+use idf version >=5, e.g. 5.5 via 
+
+> source /opt/esp32/repo2/esp-idf/export.sh
+
+set target **!! overwrites config. re-run menuconfig after**
+
+> idf.py set-target esp32s3
+
+menuconfig
+
+  * psram is octal mode, aut detect (psram settings)
+  * flash size is 8MB (serial flasher)
+  * cpu speed is 240MHz (system settings)
+  * cache settings to max (system settings)
+  * camera => GC0308 (camera settings)
+
+optionally fullclean
+
+> idf.py fullclean
+
+compile 
+
+> idf.py build
+
+flash 
+
+> idf.py -p <port> flash
+
+monitor **!! Terminate with CTRL-]  or CTRL-T + CTRL-X**
+
+> idf.py -p <port> monitor 
+
+or both 
+
+> idf.py -p <port> flash monitor 
+
