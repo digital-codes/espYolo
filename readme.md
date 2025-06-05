@@ -109,6 +109,12 @@ compile
 
 > idf.py build
 
+or 
+
+> IDF_TARGET="esp32s3" idf.py build
+
+
+
 flash 
 
 > idf.py -p <port> flash
