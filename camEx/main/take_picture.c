@@ -45,8 +45,10 @@
 #endif
 
 #include "esp_camera.h"
-
 #include "esp_wifi.h"
+#include "lwip/sockets.h"
+
+#define PORT 3333  // choose a port
 
 //#define BOARD_WROVER_KIT 1
 
@@ -207,7 +209,8 @@ static esp_err_t init_camera(void)
 }
 #endif
 
-void do_wifi(void);
+void do_wifi(void *pvParameters);
+void image_socket_server_task(void *pvParameters);
 
 
 void app_main(void)
@@ -232,9 +235,13 @@ https://forum.arduino.cc/t/esp32-cam-ov2640-dark-picture/1202399
     vTaskDelay(100 / portTICK_RATE_MS);
 
     const int grabDelayMs = 500;
+    vTaskDelay(grabDelayMs / portTICK_RATE_MS);
+    xTaskCreate((TaskFunction_t)image_socket_server_task, "SendImage", 4096, NULL, 5, NULL);
+
     while (1)
     {
         ESP_LOGI(TAG, "Taking picture...");
+        #if 0
         camera_fb_t *pic = esp_camera_fb_get();
 
         // use pic->buf to access the image
@@ -285,10 +292,49 @@ https://forum.arduino.cc/t/esp32-cam-ov2640-dark-picture/1202399
         ESP_LOGI(TAG, "Average Intensity - Red: %.2f, Green: %.2f, Blue: %.2f", avg_red, avg_green, avg_blue);
 
         esp_camera_fb_return(pic);
+        #endif
         vTaskDelay(grabDelayMs / portTICK_RATE_MS);
     }
 #else
     ESP_LOGE(TAG, "Camera support is not available for this chip");
     return;
 #endif
+}
+
+
+
+void image_socket_server_task(void *pvParameters) {
+    int listen_sock, client_sock;
+    struct sockaddr_in server_addr, client_addr;
+    socklen_t client_addr_len = sizeof(client_addr);
+
+    listen_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT);
+    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    bind(listen_sock, (struct sockaddr *)&server_addr, sizeof(server_addr));
+    listen(listen_sock, 1);
+
+    client_sock = accept(listen_sock, (struct sockaddr *)&client_addr, &client_addr_len);
+    while (1) {
+
+        // Capture image
+        camera_fb_t *pic = esp_camera_fb_get();
+        if (pic) {
+            // use pic->buf to access the image
+            ESP_LOGI(TAG, "Picture taken! Its size was: %zu bytes", pic->len);
+
+            // First send length
+            uint32_t len = pic->len;
+            uint32_t len_network_order = htonl(len);
+            send(client_sock, &len_network_order, sizeof(len_network_order), 0);
+            send(client_sock, pic->buf, pic->len, 0);
+            esp_camera_fb_return(pic);
+        }
+
+        const int grabDelayMs = 500;
+        vTaskDelay(grabDelayMs / portTICK_RATE_MS);
+    }
+    close(client_sock);  // close after one image, or loop to serve more
 }
