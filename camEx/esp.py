@@ -22,7 +22,7 @@ def create_image_from_rgb565(data, width, height):
     pixels = []
     for i in range(0, len(data), 2):
         # Read two bytes as one 16-bit RGB565 value
-        pixel_value = struct.unpack_from('<H', data, i)[0]
+        pixel_value = struct.unpack_from('>H', data, i)[0]
         pixels.append(rgb565_to_rgb888(pixel_value))
 
     # Create an image from RGB data
@@ -34,14 +34,22 @@ def create_image_from_rgb565(data, width, height):
 soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
 soc.connect(("192.168.4.1", 3333))
 
-result_bytes = soc.recv(4) # the number means how the response can be in bytes
-print("RAW Length:",result_bytes)
-flen = int.from_bytes(result_bytes, 'big')
-print("Length:",flen)
+while True:
+    result_bytes = soc.recv(4) # the number means how the response can be in bytes
+    print("RAW Length:",result_bytes)
+    flen = int.from_bytes(result_bytes, 'big')
+    print("Length:",flen)
 
-result_bytes = soc.recv(flen)
+    result_bytes = bytearray()
+    while len(result_bytes) < flen:
+        chunk = soc.recv(flen - len(result_bytes))
+        if not chunk:
+            raise ConnectionError("Connection lost while receiving data")
+        result_bytes.extend(chunk)
 
-imgrgb = create_image_from_rgb565(result_bytes,176,144)
+    imgrgb = create_image_from_rgb565(result_bytes,176,144)
+    imgrgb.show()
+
 imgrgb.save('output.png')
 
 with open("img.raw","wb") as f:

@@ -171,9 +171,9 @@ static camera_config_t camera_config = {
     .frame_size = FRAMESIZE_QCIF,    //QCIF 176x144 works. QVGA 320*240 works. 128X128 is probably QQVGA (160*120)   QQVGA-UXGA, For ESP32, do not use sizes above QVGA when not JPEG. The performance of the ESP32-S series has improved a lot, but JPEG mode always gives better frame rates.
 
     .jpeg_quality = 12, //0-63, for OV series camera sensors, lower number means higher quality
-    .fb_count = 2,       //When jpeg mode is used, if fb_count more than one, the driver will work in continuous mode.
+    .fb_count = 1, // 2,       //When jpeg mode is used, if fb_count more than one, the driver will work in continuous mode.
     .fb_location = CAMERA_FB_IN_PSRAM,
-    .grab_mode = CAMERA_GRAB_LATEST, // CAMERA_GRAB_WHEN_EMPTY,
+    .grab_mode = CAMERA_GRAB_WHEN_EMPTY //CAMERA_GRAB_LATEST, // CAMERA_GRAB_WHEN_EMPTY,
 };
 
 static esp_err_t init_camera(void)
@@ -229,11 +229,13 @@ https://forum.arduino.cc/t/esp32-cam-ov2640-dark-picture/1202399
     }
 
     ESP_LOGI(TAG, "Camera initialized successfully");
+    /*
     sensor_t *s = esp_camera_sensor_get();
     ESP_LOGI(TAG, "GAIN CTRL");
     s->set_gain_ctrl(s, 0x10);
     vTaskDelay(100 / portTICK_RATE_MS);
-
+    */
+   
     const int grabDelayMs = 500;
     vTaskDelay(grabDelayMs / portTICK_RATE_MS);
     xTaskCreate((TaskFunction_t)image_socket_server_task, "SendImage", 4096, NULL, 5, NULL);
@@ -329,11 +331,19 @@ void image_socket_server_task(void *pvParameters) {
             uint32_t len = pic->len;
             uint32_t len_network_order = htonl(len);
             send(client_sock, &len_network_order, sizeof(len_network_order), 0);
-            send(client_sock, pic->buf, pic->len, 0);
+            // Send image in 2KB chunks
+            size_t bytes_sent = 0;
+            const size_t chunk_size = 2048;
+            while (bytes_sent < pic->len) {
+                size_t bytes_to_send = (pic->len - bytes_sent > chunk_size) ? chunk_size : (pic->len - bytes_sent);
+                send(client_sock, pic->buf + bytes_sent, bytes_to_send, 0);
+                bytes_sent += bytes_to_send;
+            }
+            //send(client_sock, pic->buf, pic->len, 0);
             esp_camera_fb_return(pic);
         }
 
-        const int grabDelayMs = 500;
+        const int grabDelayMs = 200;
         vTaskDelay(grabDelayMs / portTICK_RATE_MS);
     }
     close(client_sock);  // close after one image, or loop to serve more
