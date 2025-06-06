@@ -173,59 +173,7 @@ https://forum.arduino.cc/t/esp32-cam-ov2640-dark-picture/1202399
     while (1)
     {
         ESP_LOGI(TAG, "Taking picture...");
-        #if 0
-        camera_fb_t *pic = esp_camera_fb_get();
-
-        // use pic->buf to access the image
-        ESP_LOGI(TAG, "Picture taken! Its size was: %zu bytes", pic->len);
-
-        // Compute average intensity by color
-        float sum_red = 0, sum_green = 0, sum_blue = 0;
-        uint32_t pixel_count = 0;
-        // Assuming the pixel format is RGB565
-        // Each pixel is represented by 2 bytes in RGB565 format
-        if (pic->format != PIXFORMAT_RGB565) {
-            ESP_LOGE(TAG, "Unsupported pixel format: %d", pic->format);
-            esp_camera_fb_return(pic);
-            vTaskDelay(grabDelayMs / portTICK_RATE_MS);
-            continue;
-        }
-        if (pic->len % 2 != 0) {
-            ESP_LOGE(TAG, "Picture length is not a multiple of 2, cannot process RGB565 format");
-            esp_camera_fb_return(pic);
-            vTaskDelay(grabDelayMs / portTICK_RATE_MS);
-            continue;
-        }
-        if (pic->len != 176*144*2 ) {  // QCIF
-            ESP_LOGE(TAG, "Picture length is not QCIF");
-            esp_camera_fb_return(pic);
-            vTaskDelay(grabDelayMs / portTICK_RATE_MS);
-            continue;
-        }
-        ESP_LOGI(TAG, "Processing picture for average intensity...");
-
-        for (size_t i = 0; i < pic->len; i += 2) {
-            uint16_t pixel = pic->buf[i] | (pic->buf[i + 1] << 8);
-            uint8_t red = (pixel >> 11) & 0x1F;
-            uint8_t green = (pixel >> 5) & 0x3F;
-            uint8_t blue = pixel & 0x1F;
-
-            sum_red += (float)red;
-            sum_green += (float)green;
-            sum_blue += (float)blue;
-            pixel_count++;
-        }
-        ESP_LOGI(TAG, "Intensity sums - Red: %.2f, Green: %.2f, Blue: %.2f", sum_red, sum_green, sum_blue);
-
-        float avg_red = (float)(sum_red / pixel_count);
-        float avg_green = (float)(sum_green / pixel_count);
-        float avg_blue = (float)(sum_blue / pixel_count);
-
-        ESP_LOGI(TAG, "Average Intensity - Red: %.2f, Green: %.2f, Blue: %.2f", avg_red, avg_green, avg_blue);
-
-        esp_camera_fb_return(pic);
-        #endif
-        vTaskDelay(grabDelayMs / portTICK_RATE_MS);
+        vTaskDelay(10*grabDelayMs / portTICK_RATE_MS);
     }
 }
 
@@ -246,6 +194,16 @@ void image_socket_server_task(void *pvParameters) {
 
     client_sock = accept(listen_sock, (struct sockaddr *)&client_addr, &client_addr_len);
     while (1) {
+        // Check if the client is still connected
+        char test_buf;
+        int result = recv(client_sock, &test_buf, 1, MSG_PEEK | MSG_DONTWAIT);
+        if (result == 0) {
+            ESP_LOGI(TAG, "Client disconnected");
+            break; // Exit the loop if the client disconnected
+        } else if (result < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+            ESP_LOGE(TAG, "Socket error: %d", errno);
+            break; // Exit the loop on socket error
+        }
 
         // Capture image
         camera_fb_t *pic = esp_camera_fb_get();
