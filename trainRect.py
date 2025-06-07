@@ -27,12 +27,9 @@ import matplotlib.patches as patches
 
 import layoutUtilsRect as layout
 
-GRID = (8,6)
+GRID = (7,5)
 IMAGE_SIZE = (176,144) # QCIF
-
-cells = layout.define_cells(IMAGE_SIZE, GRID)
-regions = layout.define_regions(cells,GRID)
-
+REG_ITEMS = 4
 
 
 checkpoint_cb = ModelCheckpoint(
@@ -87,7 +84,7 @@ def build_quadrant_model(input_shape, output_dim):
     return tf.keras.Model(inputs, outputs)
 
 
-def load_dataset(image_dir, classes, cells, regions):
+def load_dataset(image_dir, classes, cells, regions, grid, output_size=None):
     label_files = [
         os.path.join(dp, f)
         for dp, dn, filenames in os.walk(image_dir)
@@ -107,15 +104,16 @@ def load_dataset(image_dir, classes, cells, regions):
                 print(f"[WARN] Image not found: {image_path}")
                 continue
 
-            image = Image.open(image_path).convert("RGB").resize((IMAGE_SIZE, IMAGE_SIZE))
+            image = Image.open(image_path).convert("RGB").resize((IMAGE_SIZE[0], IMAGE_SIZE[1]))
             image = np.array(image) / 255.0
 
             bboxes = np.array(data["bboxes"], dtype=np.float32) # read as float32 for further processing
             labels = np.array(data["labels"], dtype=np.int32)
             if len(bboxes) == 0 or len(labels) == 0:
-                labelVector = np.zeros(len(regions) * len(classes.keys()), dtype=np.float32)
+                labelVector = np.zeros(output_size, dtype=np.float32)
             else:
-                labelVector = layout.create_label_vector(cells, regions, bboxes, labels, len(classes.keys()))
+                labelVector = layout.create_label_vector(cells, regions, grid, bboxes, labels, 
+                                                         len(classes.keys()),output_size, REG_ITEMS)
                 
 
             yield image, labelVector # (bboxes, labels)
@@ -124,8 +122,8 @@ def load_dataset(image_dir, classes, cells, regions):
     ds = tf.data.Dataset.from_generator(
         generator,
         output_signature=(
-            tf.TensorSpec(shape=(IMAGE_SIZE, IMAGE_SIZE, 3), dtype=tf.float32),
-            tf.TensorSpec(shape=(len(regions)*len(classes.keys())), dtype=tf.float32)
+            tf.TensorSpec(shape=(IMAGE_SIZE[1], IMAGE_SIZE[0], 3), dtype=tf.float32),
+            tf.TensorSpec(shape=(output_size), dtype=tf.float32)
         )
     )
     return ds
@@ -183,14 +181,16 @@ def main():
 
     with open(os.path.join(image_dir, "label_map.json"), "r") as f:
         classes = json.load(f)
-
     print(f"Loaded {len(classes)} classes from label_map.json")
 
     cells = layout.define_cells(IMAGE_SIZE, GRID)
-    regions = layout.define_regions(GRID)    
-    print(f"Defined {len(regions)} regions for image size {IMAGE_SIZE}x{IMAGE_SIZE}.")
+    regions = layout.define_regions(cells,GRID)
+    print(f"Defined {len(regions)} regions for image size {IMAGE_SIZE}.")
+    item = "class,prob,x0,y1,x1,y1"
+    output_size = len(regions) * (len(item.split(","))) * REG_ITEMS 
+    print(f"Output vector size: {output_size}.")
     
-    ds = load_dataset(image_dir, classes, cells, regions)
+    ds = load_dataset(image_dir, classes, cells, regions,GRID, output_size=output_size)
     print(f"Loaded dataset")
     
     if ds is None:
@@ -206,11 +206,10 @@ def main():
             print("No data loaded. Please check the image directory and label files.")
             print("Exiting...")
 
-    input_shape = (IMAGE_SIZE, IMAGE_SIZE, 3)
-    output_dim = len(regions) * len(list(classes.keys())) 
-    print(f"Input shape: {input_shape}, Output dimension: {output_dim}")
+    input_shape = (IMAGE_SIZE[1], IMAGE_SIZE[0], 3)
+    print(f"Input shape: {input_shape}, Output dimension: {output_size}")
 
-    model = build_quadrant_model(input_shape = input_shape, output_dim = output_dim)
+    model = build_quadrant_model(input_shape = input_shape, output_dim = output_size)
 
     # model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
     # Start with 1e-3 (default), go higher or lower based on behavior
@@ -233,7 +232,7 @@ def main():
     train_size = int(0.7 * dataset_size)
     val_size = int(0.2 * dataset_size)
     test_size = dataset_size - train_size - val_size
-    batch_size = 4
+    batch_size = 16
     steps = train_size // batch_size
     print(f"Dataset split: {train_size} train, {val_size} validation, {test_size} test samples.")
 
@@ -249,7 +248,7 @@ def main():
     model.fit(
         train_ds,
         validation_data=val_ds,
-        epochs=500,
+        epochs=2000,
         batch_size=batch_size,
         steps_per_epoch=steps,
         verbose=1,
