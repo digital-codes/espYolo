@@ -555,6 +555,7 @@ def estimate_bounding_box(
     fov_rad = np.radians(fov_deg)
     aspect = img_width / img_height
     projected_points = []
+    drop_object = False
 
     for c in corners:
         _, p_cam = project_point(c, cam_pos, look_at, fov_deg, img_width, img_height)
@@ -566,28 +567,37 @@ def estimate_bounding_box(
             projected_points.append((x_screen, y_screen))
 
     if not projected_points:
-        return None, None  # All corners behind the camera
+        return None, None, drop_object  # All corners behind the camera
 
     xs, ys = zip(*projected_points)
     x_min, x_max = min(xs) - pad, max(xs) + pad
     y_min, y_max = min(ys) - pad, max(ys) + pad
+
+    # inital area
+    init_area = abs(x_max - x_min) * abs(y_max - y_min)
 
     # Clamp to screen
     x_min = max(0, x_min)
     y_min = max(0, y_min)
     x_max = min(img_width, x_max)
     y_max = min(img_height, y_max)
+    # final_area
+    final_area = abs(x_max - x_min) * abs(y_max - y_min)
+    # ignore if fraction below .5
+    if final_area < 0.5 * init_area:
+        #print(f"Visible bounding box too small: initial area {init_area}, final area {final_area}")
+        drop_object = True
 
     if x_min >= x_max or y_min >= y_max:
-        return None, None  # Outside screen entirely
+        return None, None, drop_object  # Outside screen entirely
 
     cutoff_x = img_width // 40
     cutoff_y = img_height // 30
     if x_max - x_min < cutoff_x or y_max - y_min < cutoff_y:
-        return None, None
+        return None, None, drop_object
 
     # return x,y,w,h
-    return [int(x_min), int(y_min), int(x_max - x_min), int(y_max - y_min)], p_cam
+    return [int(x_min), int(y_min), int(x_max - x_min), int(y_max - y_min)], p_cam, drop_object
 
 
 def lookat_point(pos, cam_rot=1):
@@ -773,8 +783,8 @@ frames = int(duration * fps)
 
 randomScene = True
 
-img_width = 160 # 600
-img_height = 160 # 450
+img_width = 176 # 600
+img_height = 144 # 450
 
 unique_classes = {obj["class"] for obj in object_coords}
 class_map = {key: idx for idx, key in enumerate(unique_classes) }
@@ -841,11 +851,11 @@ for i in range(frames):
             #    screen_coords,
             #    rel_pos,
             # )
-            bb, dist = estimate_bounding_box(
+            bb, dist, drop = estimate_bounding_box(
                 pnt, size, camera_pos, look_at, camera_fov, img_width, img_height
             )
             if bb is not None:
-                # print(f"Object {obj['type']} bounding box at frame {i:04d}:", bb,dist)
+                #print(f"Object {obj['type']} bounding box at frame {i:04d}:", bb,dist)
                 visible_obj.append(
                     {
                         "class": obj["class"],
@@ -855,6 +865,7 @@ for i in range(frames):
                         "size": size,
                         "bounding_box": bb,
                         "distance": dist,
+                        "drop": drop,
                     }
                 )
         # else:
@@ -970,7 +981,7 @@ for i in range(frames):
             )
 
             # Drop item if remaining width or height is smaller than 40% of original
-            cutoff = 0.1
+            cutoff = 0.4
             if bb[2] < cutoff * bb_width or bb[3] < cutoff * bb_height:
                 print(
                     f"Object {obj['class']} bounding box too small after overlap check, dropping"
@@ -980,6 +991,8 @@ for i in range(frames):
     for obj in visible_obj:
         if obj["bounding_box"] is None:
             print(f"Object {obj['class']} bounding box not visible")
+        elif obj["drop"]:
+            print(f"Object {obj['class']} bounding box dropped due to fractional area")
         else:
             bb = obj["bounding_box"]
             dist = obj["distance"]
@@ -1006,9 +1019,11 @@ for i in range(frames):
 
     labels = []
     bboxes = []
+    zdistance = []
     for a in annotations:
         bboxes.append(a["bounding_box"])
         labels.append(a["label"])
+        zdistance.append(a["distance"][2])
     
     with open(os.path.join(output_dir, f"robot_{i:04d}_labels.json"), "w") as f:
         json.dump(
@@ -1016,6 +1031,7 @@ for i in range(frames):
                 "img": img_name,
                 "bboxes": bboxes,
                 "labels": labels,
+                "zdistance": zdistance,
             },
             f,
             indent=4,
