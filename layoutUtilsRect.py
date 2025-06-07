@@ -16,21 +16,17 @@ def define_cells(image_size =(176,144), grid = (4,3)):
 
 def define_regions(cells, grid=(4,3)):
     regions = []
-    # add all cells. assume cells are ordered row wise
+    # add all cells. cells are ordered row wise
     for c in cells:
         regions.append((cells.index(c), cells.index(c)))  # (start_cell, end_cell) is the same for single cell
-    # enlarge by 1 in x and y
-    for r in range(0, grid[1]-1):
-        for c in range(0, grid[0]-1):
-            start_cell = c + r * grid[0]
-            end_cell = start_cell + grid[0] + 1
-            regions.append((start_cell, end_cell))  # (start_cell, end_cell) is the same for single cell
-    # enlarge by 2 in x and y
-    for r in range(0, grid[1]-2):
-        for c in range(0, grid[0]-2):
-            start_cell = c + r * grid[0]
-            end_cell = start_cell + 2 * (grid[0] + 1)
-            regions.append((start_cell, end_cell))  # (start_cell, end_cell) is the same for single cell
+    #enlarge in steps of 1 
+    for s in range(1,min(grid)):
+        for r in range(0, grid[1] - s):
+            for c in range(0, grid[0] - s):
+                start_cell = c + r * grid[0]
+                end_cell = start_cell + (grid[0] + 1) * s
+                regions.append((start_cell, end_cell))  # (start_cell, end_cell) is the same for single cell
+        
 
     # add full size
     if grid[0] != grid[1]:
