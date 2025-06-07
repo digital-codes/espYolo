@@ -25,13 +25,13 @@ import matplotlib.patches as patches
 #Binary Accuracy	≥ 0.85 (ideal), ≥ 0.75 (good)	Per-label correctness
 #Binary Crossentropy Loss	≤ 0.25 (ideal), ≤ 0.35 (usable)	For sigmoid outputs
 
-import layoutUtils as layout
+import layoutUtilsRect as layout
 
-GRID = 5
-IMAGE_SIZE = 160 
+GRID = (8,6)
+IMAGE_SIZE = (176,144) # QCIF
 
 cells = layout.define_cells(IMAGE_SIZE, GRID)
-regions = layout.define_regions(GRID)
+regions = layout.define_regions(cells,GRID)
 
 
 

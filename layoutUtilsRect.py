@@ -26,8 +26,6 @@ def define_regions(cells, grid=(4,3)):
                 start_cell = c + r * grid[0]
                 end_cell = start_cell + (grid[0] + 1) * s
                 regions.append((start_cell, end_cell))  # (start_cell, end_cell) is the same for single cell
-        
-
     # add full size
     if grid[0] != grid[1]:
         regions.append((0, len(cells) - 1))            
