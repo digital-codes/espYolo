@@ -9,7 +9,7 @@ import math
 import layoutUtilsRect as layout
 
 import sys 
-
+import argparse
 
 
 # CONFIG
@@ -22,20 +22,38 @@ OUTPUT_DIR = "verify"
 THRESHOLD = 0.4  # Prediction confidence threshold
 INPUT_PATH = "./voc"
 
-if len(sys.argv) > 1:
-    modelSource = sys.argv[1]
-else:
-    modelSource = MODEL_PATH
+parser = argparse.ArgumentParser(description="Predict a quadrant prediction model.")
+parser.add_argument(
+    "--model",
+    "-l",
+    type=str,
+    required=True,
+    help="Path to the model",
+)
+parser.add_argument(
+    "--image_dir",
+    "-i",
+    type=str,
+    required=True,
+    help="Path to the image root directory",
+)
+parser.add_argument(
+    "--mode",
+    "-m",
+    default="region",
+    type=str,
+    help="Mode of operation: 'region' for region-based training, 'cell' for cell-based training.",
+)
+args = parser.parse_args()
 
-INPUT_PATH = "./voc"
-if len(sys.argv) > 2:
-    imgSource = sys.argv[2]
-else:
-    imgSource = INPUT_PATH
+
+modelSource = args.model
+imgSource = args.image_dir
+mode = args.mode
 
 
 
-def load_dataset(image_dir, classes, cells, regions, grid, output_size=None):
+def load_dataset(image_dir, classes, cells, regions, grid, output_size=None, mode="region"):
     label_files = [
         os.path.join(dp, f)
         for dp, dn, filenames in os.walk(image_dir)
@@ -63,8 +81,17 @@ def load_dataset(image_dir, classes, cells, regions, grid, output_size=None):
             if len(bboxes) == 0 or len(labels) == 0:
                 labelVector = np.zeros(output_size, dtype=np.float32)
             else:
-                labelVector = layout.create_label_vector(cells, regions, grid, bboxes, labels, 
-                                                         len(classes.keys()),REG_ITEMS, 6)
+                labelVector = layout.create_label_vector(
+                    cells,
+                    regions,
+                    grid,
+                    bboxes,
+                    labels,
+                    len(classes.keys()),
+                    output_size,
+                    REG_ITEMS,
+                    mode
+                )
                 
 
             yield image, labelVector # (bboxes, labels)
@@ -91,8 +118,18 @@ cells = layout.define_cells(IMAGE_SIZE, GRID)
 regions = layout.define_regions(cells,GRID)
 NUM_REGIONS = len(regions)
 print(f"Defined {len(regions)} regions for image size {IMAGE_SIZE}.")
-item = "class,prob,x0,y1,x1,y1"
-output_size = len(regions) * (len(item.split(","))) * REG_ITEMS 
+
+if args.mode == "yolo":
+    itemDef = "prob,class,x0,y1,x1,y1"
+    output_size = layout.get_output_size(
+        regions, reg_items=REG_ITEMS, item_size=len(itemDef.split(",")), class_num=1
+    )  # classes in item
+    print(f"Output vector size: {output_size}.")
+elif args.mode == "region":
+    #item = "class probability "
+    output_size = layout.get_output_size(
+        regions, reg_items=1, item_size=1, class_num=len(classes.keys())
+    )  
 print(f"Output vector size: {output_size}.")
 
 # ds = load_dataset(image_dir, classes, cells, regions, GRID, output_size=output_size)
@@ -121,8 +158,12 @@ for idx, (img, lbl) in enumerate(dataset):
     print("Img shape:", img_np.shape)
     # Predict
     pred_vec = model.predict(img[None, ...])[0]
+    save_path = os.path.join(OUTPUT_DIR, f"predvec_{idx:04d}.json")
+    with open(save_path, "w") as f:
+        json.dump(pred_vec.tolist(), f)
+        #json.dump([item for item in items], f)
     
-    items = layout.decode_label_vector(pred_vec, cells, regions, GRID, REG_ITEMS)
+    items = layout.decode_label_vector(pred_vec, cells, regions, 1, 1, len(list(classes.keys())), mode=mode)
 
     if len(items) == 0:
         print(f"No items found in prediction vector for image {idx}. Skipping...")
