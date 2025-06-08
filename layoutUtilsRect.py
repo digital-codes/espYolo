@@ -96,22 +96,22 @@ def create_label_vector(cells, regions, grid, bboxes, class_ids, class_num, reg_
     if mode == "region":
         num_regions = len(regions)
         # all zero
-        set_classes = np.zeros(class_num, dtype=np.int8) 
+        set_classes = np.zeros(class_num*num_regions, dtype=np.int8) 
         vec = np.zeros(class_num * num_regions, dtype=np.float32) 
         for bbox, class_id in zip(bboxes, class_ids):
-            if set_classes[class_id] > 0:
-                # first entry per class is good. input sorted by distance
-                continue
             region = map_bbox(cells, regions, grid, bbox)
             if region is None:
                 print(f"[WARN] No region found for bbox {bbox} with class {class_id}")
+                continue
+            if set_classes[class_id*region] > 0:
+                # first entry per class is good. input sorted by distance
                 continue
             if class_id < 0 or class_id >= class_num:
                 print(f"[WARN] Invalid class_id {class_id} for bbox {bbox}")
                 continue
             idx = class_id + region * class_num
             vec[idx] = 1.0
-            set_classes[class_id] = 1
+            set_classes[class_id*region] = 1
 
         
     elif mode == "yolo":    
