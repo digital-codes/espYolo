@@ -3,6 +3,7 @@ import numpy as np
 import json
 from PIL import Image
 from PIL import ImageDraw
+import sys 
 
 from vapory import (
     Scene,
@@ -42,7 +43,11 @@ def color(rgb):
 
 
 # Output directory for frames
-output_dir = "output_frames"
+if len(sys.argv) > 1:
+    output_dir = sys.argv[1]
+else:
+    output_dir = "output_frames"
+
 os.makedirs(output_dir, exist_ok=True)
 
 # Oval path parameters
@@ -777,8 +782,8 @@ def create_scene(t, duration, view="robot", randomize=False):
 
 
 # Animation parameters
-duration = 40
-fps = 30
+duration = 60
+fps = 60
 frames = int(duration * fps)
 
 randomScene = True

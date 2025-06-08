@@ -6,21 +6,21 @@ from PIL import Image
 import json
 import math
 
-import layoutUtils as layout
+import layoutUtilsRect as layout
 
 import sys 
 
 
 
 # CONFIG
-MODEL_PATH = "best_model_regions_wide.keras"
-IMAGE_SIZE = 160
+MODEL_PATH = "best_model_regions_rect.keras"
+GRID = (7,5)
+IMAGE_SIZE = (176,144) # QCIF
+REG_ITEMS = 4
+
 OUTPUT_DIR = "verify"
 THRESHOLD = 0.4  # Prediction confidence threshold
-
-GRID = 5
 INPUT_PATH = "./voc"
-IMAGE_SIZE = 160
 
 if len(sys.argv) > 1:
     modelSource = sys.argv[1]
@@ -34,14 +34,14 @@ else:
     imgSource = INPUT_PATH
 
 
-def load_dataset(image_dir, classes, cells, regions):
+
+def load_dataset(image_dir, classes, cells, regions, grid, output_size=None):
     label_files = [
         os.path.join(dp, f)
         for dp, dn, filenames in os.walk(image_dir)
         for f in filenames if f.endswith("labels.json")
     ]
-    label_files.sort()
-    
+
     if not label_files:
         raise ValueError("No 'labels.json' files found in the provided directory.")
 
@@ -55,16 +55,17 @@ def load_dataset(image_dir, classes, cells, regions):
                 print(f"[WARN] Image not found: {image_path}")
                 continue
 
-            print(f"Processing image: {image_path}")
-            image = Image.open(image_path).convert("RGB") # .resize((imageSize, imageSize))
+            image = Image.open(image_path).convert("RGB").resize((IMAGE_SIZE[0], IMAGE_SIZE[1]))
             image = np.array(image) / 255.0
 
             bboxes = np.array(data["bboxes"], dtype=np.float32) # read as float32 for further processing
             labels = np.array(data["labels"], dtype=np.int32)
             if len(bboxes) == 0 or len(labels) == 0:
-                labelVector = np.zeros(len(regions) * len(classes.keys()), dtype=np.float32)
+                labelVector = np.zeros(output_size, dtype=np.float32)
             else:
-                labelVector = layout.create_label_vector(cells, regions, bboxes, labels, len(classes.keys()))
+                labelVector = layout.create_label_vector(cells, regions, grid, bboxes, labels, 
+                                                         len(classes.keys()),output_size, REG_ITEMS)
+                
 
             yield image, labelVector # (bboxes, labels)
                 
@@ -72,8 +73,8 @@ def load_dataset(image_dir, classes, cells, regions):
     ds = tf.data.Dataset.from_generator(
         generator,
         output_signature=(
-            tf.TensorSpec(shape=(IMAGE_SIZE, IMAGE_SIZE, 3), dtype=tf.float32),
-            tf.TensorSpec(shape=(len(regions)*len(classes.keys())), dtype=tf.float32)
+            tf.TensorSpec(shape=(IMAGE_SIZE[1], IMAGE_SIZE[0], 3), dtype=tf.float32),
+            tf.TensorSpec(shape=(output_size), dtype=tf.float32)
         )
     )
     return ds
@@ -87,15 +88,21 @@ with open(os.path.join(imgSource, "label_map.json"), "r") as f:
 model = tf.keras.models.load_model(modelSource, compile=False)
 
 cells = layout.define_cells(IMAGE_SIZE, GRID)
-regions = layout.define_regions(GRID)
+regions = layout.define_regions(cells,GRID)
 NUM_REGIONS = len(regions)
+print(f"Defined {len(regions)} regions for image size {IMAGE_SIZE}.")
+item = "class,prob,x0,y1,x1,y1"
+output_size = len(regions) * (len(item.split(","))) * REG_ITEMS 
+print(f"Output vector size: {output_size}.")
+
+# ds = load_dataset(image_dir, classes, cells, regions, GRID, output_size=output_size)
 
 
 
 # === Make sure output dir exists
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-dataset = load_dataset(imgSource, classes, cells, regions)
+dataset = load_dataset(imgSource, classes, cells, regions,GRID, output_size=output_size)
 
 
 class_counts = [0] * len(list(classes.keys()))
@@ -106,8 +113,6 @@ for _, label in dataset:
         class_counts[class_id] += tf.reduce_sum(label[start:end]).numpy()
 print("Label counts per class:", class_counts)
 
-
-
 # === Run and visualize
 for idx, (img, lbl) in enumerate(dataset):
     img_np = img.numpy()
@@ -116,55 +121,37 @@ for idx, (img, lbl) in enumerate(dataset):
     print("Img shape:", img_np.shape)
     # Predict
     pred_vec = model.predict(img[None, ...])[0]
+    
+    items = layout.decode_label_vector(pred_vec, cells, regions, GRID, REG_ITEMS)
+
+    if len(items) == 0:
+        print(f"No items found in prediction vector for image {idx}. Skipping...")
+        continue
+    
+                
+    # Convert prediction vector to class and bounding boxes
 
     # Draw boxes
-    fig = plt.figure(figsize=(IMAGE_SIZE/100, IMAGE_SIZE/100), dpi=100)  # 1.6 * 100 = 160 pixels
+    fig = plt.figure(figsize=(IMAGE_SIZE[0]/100, IMAGE_SIZE[1]/100), dpi=100)  # 1.6 * 100 = 160 pixels
     ax = fig.add_axes([0, 0, 1, 1])  # full canvas, no padding
     ax.imshow(img_uint8)
     ax.axis('off')
-    
-    #fig, ax = plt.subplots(1, figsize=(IMAGE_SIZE / 100, IMAGE_SIZE / 100))
-    #ax.set_xlim(0, IMAGE_SIZE)
-    #ax.set_ylim(IMAGE_SIZE, 0)
-    #ax.imshow(img_uint8)
-    objects= []
-    for class_id in range(len(list(classes.keys()))):
-        print(f"Processing class {class_id} ({list(classes.keys())[class_id]})")
-        for region_id in range(NUM_REGIONS):
-            index = class_id * NUM_REGIONS + region_id
-            score = pred_vec[index]
-            if score > THRESHOLD:
-                (sc, ec) = regions[region_id]
-                x1 = cells[sc][0]
-                y1 = cells[sc][1]
-                x2 = cells[ec][2]
-                y2 = cells[ec][3]
-                label = f"{list(classes.keys())[class_id]} ({score:.2f})"
-                rect = plt.Rectangle((x1, y1), x2 - x1, y2 - y1,
-                                     linewidth=2, edgecolor='lime', facecolor='none')
-                ax.add_patch(rect)
-                lblx = x1 + 10 if x1 < IMAGE_SIZE - 50 else x1 - 60
-                lbly = y1 + 10 if y1 < IMAGE_SIZE - 20 else y1 - 20
-                ax.text(lblx, lbly, label, color='lime', fontsize=6)
-                objects.append((region_id, class_id))
-            # add ground thruth
-            if lbl[index] > 0.5:
-                # print(f"  Found GT for class {class_id} in region {region_id},{regions[region_id]}")
-                (sc, ec) = regions[region_id]
-                x1 = cells[sc][0]
-                y1 = cells[sc][1]
-                x2 = cells[ec][2]
-                y2 = cells[ec][3]
-                rect = plt.Rectangle((x1, y1), x2 - x1, y2 - y1,
-                                        linewidth=2, edgecolor='red', linestyle='--', facecolor='none')
-                ax.add_patch(rect)
-                lblx = x1 + 15 if x1 < IMAGE_SIZE - 50 else x1 - 70
-                lbly = y1 + 15 if y1 < IMAGE_SIZE - 20 else y1 - 30
-                ax.text(lblx, lbly, f"{list(classes.keys())[class_id]} [GT]", fontsize=6, color='red')
+
+    for item in items:
+        class_id = item[1]
+        label = f"{list(classes.keys())[class_id]} ({item[0]:.2f})"
+        rect = plt.Rectangle((item[2], item[3]), item[4] - item[2], item[5] - item[3],
+                                linewidth=2, edgecolor='lime', facecolor='none')
+        ax.add_patch(rect)
+        lblx = item[2] + 10 if item[2] < IMAGE_SIZE[0] - 50 else item[2] - 60
+        lbly = item[3] + 10 if item[3] < IMAGE_SIZE[1] - 20 else item[3] - 20
+        ax.text(lblx, lbly, label, color='lime', fontsize=6)
+
 
     save_path = os.path.join(OUTPUT_DIR, f"pred_{idx:04d}.json")
     with open(save_path, "w") as f:
-        json.dump(objects, f)
+        # json.dump([item.tolist() for item in items], f)
+        json.dump([item for item in items], f)
 
     #ax.axis('off')
     save_path = os.path.join(OUTPUT_DIR, f"pred_{idx:04d}.png")

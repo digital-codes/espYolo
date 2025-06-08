@@ -9,8 +9,8 @@ def define_cells(image_size =(176,144), grid = (4,3)):
         for col in range(grid[0]):
             x_min = col * cell_size[0] 
             y_min = row * cell_size[1]
-            x_max = (col + 1) * cell_size[0] - 1 if col < grid[0] - 1 else image_size[0] # margin
-            y_max = (row + 1) * cell_size[1] - 1 if row < grid[1] - 1 else image_size[1] # margin
+            x_max = (col + 1) * cell_size[0] - 1 if col < grid[0] - 1 else image_size[0] - 1 # margin
+            y_max = (row + 1) * cell_size[1] - 1 if row < grid[1] - 1 else image_size[1] - 1 # margin
             cells.append((x_min, y_min, x_max, y_max))
     return cells
 
@@ -74,6 +74,10 @@ def find_region(regions, start_cell, end_cell, grid=(4,3)):
         return None
 
 def map_bbox(cells, regions, grid, bbox):
+    if bbox[2] >= cells[grid[0]-1][2]:
+        bbox[2] = cells[grid[0]-1][2] - 1  # adjust right edge to avoid out of bounds
+    if bbox[3] >= cells[-1][3]:
+        bbox[3] = cells[-1][3] - 1  # adjust bottom edge to avoid out of bounds
     width = int(bbox[2] - bbox[0])
     height = int(bbox[3] - bbox[1])
     wadjust = width // 20
@@ -88,12 +92,20 @@ def map_bbox(cells, regions, grid, bbox):
     return region
     
 
-def create_label_vector(cells, regions, grid, bboxes, class_ids, num_classes,output_size,reg_items):
+def create_label_vector(cells, regions, grid, bboxes, class_ids, num_classes,item_size,reg_items):
     """
     Assign each bbox to the single best-matching region based on IoU.
     """
     num_regions = len(regions)
-    vec = np.zeros(output_size, dtype=np.float32)
+    #vec = np.zeros(output_size, dtype=np.float32)
+    #vec[::6] = 1.0  # set all class_id to 1.0 (invalid class_id)
+    vec = np.array([1.0,0,0,0,0,0], dtype=np.float32)
+    for i in range(1, num_regions* reg_items):
+        vec = np.concatenate((vec, np.array([1.0,0,0,0,0,0], dtype=np.float32)), axis=0)
+    
+    img_width = cells[-1][2] + 1
+    img_height = cells[-1][3] + 1
+    # check if output size is correct
 
     # init region items
     region_fill = np.zeros(num_regions, dtype=np.int32)
@@ -108,22 +120,53 @@ def create_label_vector(cells, regions, grid, bboxes, class_ids, num_classes,out
         if region_fill[region] >= reg_items:
             print(f"[WARN] Region {region} already filled for bbox {bbox} with class {class_id}")
             continue
-        region_fill[region] += 1
         if class_id < 0 or class_id >= num_classes:
             print(f"[WARN] Invalid class_id {class_id} for bbox {bbox}")
             continue
         # increment class_id. 0 is invalid
         class_id += 1
         
-        idx = region * (reg_items * 6) + (region_fill[region] - 1) * 6
+        idx = region * (reg_items * 6) + (region_fill[region]) * 6
         vec[idx] = 1.0
-        vec[idx + 1] = class_id
-        vec[idx + 2] = bbox[0]
-        vec[idx + 3] = bbox[1]
-        vec[idx + 4] = bbox[2]
-        vec[idx + 5] = bbox[3]  
+        vec[idx + 1] = class_id / num_classes
+        vec[idx + 2] = bbox[0]/img_width
+        vec[idx + 3] = bbox[1]/img_height
+        vec[idx + 4] = bbox[2]/img_width
+        vec[idx + 5] = bbox[3]/img_height  
         #print(f"Assigned bbox {bbox} with class {class_id} to region {region}")
+        region_fill[region] += 1
 
     return vec
 
+def get_output_size(regions, reg_items, item_size, class_num = 0):
+    # e.g. 6 items per region: probability, class_id, x_min, y_min, x_max, y_max
+    if class_num != 0:
+        return len(regions) * reg_items * item_size * class_num
+    else:   
+        return len(regions) * reg_items * item_size
+
+def decode_label_vector(vec, cells, regions, grid, reg_items):
+    num_regions = len(regions)
+    img_width = cells[-1][2] + 1
+    img_height = cells[-1][3] + 1
+
+    items = []
+    itemSize = 6 # probability, class_id, x_min, y_min, x_max, y_max
+    itemNum = len(vec) // itemSize
+    if len(vec) % itemSize != 0:
+        raise ValueError(f"Invalid vector length {len(vec)} for item size {itemSize}")
+    for i in range(itemNum):
+        idx = i * itemSize
+        if vec[idx] < .2:
+            continue
+        class_id = round(vec[idx + 1] * 5) - 1
+        if class_id < 1:
+            continue
+        x_min = int(vec[idx + 2] * img_width)
+        y_min = int(vec[idx + 3] * img_height)
+        x_max = int(vec[idx + 4] * img_width)
+        y_max = int(vec[idx + 5] * img_height)
+        items.append((float(vec[idx]),int(class_id), float(x_min), float(y_min), float(x_max), float(y_max)))
+
+    return items
 
