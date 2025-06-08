@@ -92,7 +92,7 @@ def map_bbox(cells, regions, grid, bbox):
     return region
     
 
-def create_label_vector(cells, regions, grid, bboxes, class_ids, num_classes,item_size,reg_items):
+def create_label_vector(cells, regions, grid, bboxes, class_ids, class_num, reg_items=1, item_size=1):
     """
     Assign each bbox to the single best-matching region based on IoU.
     """
@@ -120,7 +120,7 @@ def create_label_vector(cells, regions, grid, bboxes, class_ids, num_classes,ite
         if region_fill[region] >= reg_items:
             print(f"[WARN] Region {region} already filled for bbox {bbox} with class {class_id}")
             continue
-        if class_id < 0 or class_id >= num_classes:
+        if class_id < 0 or class_id >= class_num:
             print(f"[WARN] Invalid class_id {class_id} for bbox {bbox}")
             continue
         # increment class_id. 0 is invalid
@@ -128,7 +128,7 @@ def create_label_vector(cells, regions, grid, bboxes, class_ids, num_classes,ite
         
         idx = region * (reg_items * 6) + (region_fill[region]) * 6
         vec[idx] = 1.0
-        vec[idx + 1] = class_id / num_classes
+        vec[idx + 1] = class_id / class_num
         vec[idx + 2] = bbox[0]/img_width
         vec[idx + 3] = bbox[1]/img_height
         vec[idx + 4] = bbox[2]/img_width
@@ -138,25 +138,21 @@ def create_label_vector(cells, regions, grid, bboxes, class_ids, num_classes,ite
 
     return vec
 
-def get_output_size(regions, reg_items, item_size, class_num = 0):
+def get_output_size(regions, reg_items=1, item_size=1, class_num = 1):
     # e.g. 6 items per region: probability, class_id, x_min, y_min, x_max, y_max
-    if class_num != 0:
-        return len(regions) * reg_items * item_size * class_num
-    else:   
-        return len(regions) * reg_items * item_size
+    return len(regions) * reg_items * item_size * class_num
 
-def decode_label_vector(vec, cells, regions, grid, reg_items):
+def decode_label_vector(vec, cells, regions, reg_items=1, item_size=1, class_num = 1):
     num_regions = len(regions)
     img_width = cells[-1][2] + 1
     img_height = cells[-1][3] + 1
 
     items = []
-    itemSize = 6 # probability, class_id, x_min, y_min, x_max, y_max
-    itemNum = len(vec) // itemSize
-    if len(vec) % itemSize != 0:
-        raise ValueError(f"Invalid vector length {len(vec)} for item size {itemSize}")
+    itemNum = len(vec) // item_size
+    if len(vec) % item_size != 0:
+        raise ValueError(f"Invalid vector length {len(vec)} for item size {item_size}")
     for i in range(itemNum):
-        idx = i * itemSize
+        idx = i * item_size
         if vec[idx] < .2:
             continue
         class_id = round(vec[idx + 1] * 5) - 1

@@ -64,7 +64,7 @@ def load_dataset(image_dir, classes, cells, regions, grid, output_size=None):
                 labelVector = np.zeros(output_size, dtype=np.float32)
             else:
                 labelVector = layout.create_label_vector(cells, regions, grid, bboxes, labels, 
-                                                         len(classes.keys()),output_size, REG_ITEMS)
+                                                         len(classes.keys()),REG_ITEMS, 6)
                 
 
             yield image, labelVector # (bboxes, labels)
