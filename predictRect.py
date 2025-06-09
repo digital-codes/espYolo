@@ -38,6 +38,12 @@ parser.add_argument(
     help="Path to the image root directory",
 )
 parser.add_argument(
+    "--first_img",
+    "-f",
+    type=str,
+    help="Optional: First image in image root directory",
+)
+parser.add_argument(
     "--mode",
     "-m",
     default="region",
@@ -60,7 +66,6 @@ imgSource = args.image_dir
 mode = args.mode
 
 
-
 def load_dataset(image_dir, classes, cells, regions, grid, output_size=None, mode="region"):
     label_files = [
         os.path.join(dp, f)
@@ -70,6 +75,19 @@ def load_dataset(image_dir, classes, cells, regions, grid, output_size=None, mod
 
     if not label_files:
         raise ValueError("No 'labels.json' files found in the provided directory.")
+
+    label_files = sorted(label_files)
+    if args.first_img != None:
+        print(f"First image specified: {args.first_img}")
+        try:
+            first_img_index = next(
+            i for i, label_file in enumerate(label_files)
+            if args.first_img in label_file
+            )
+            label_files = label_files[first_img_index:]
+        except StopIteration:
+            raise ValueError(f"First image '{args.first_img}' not found in label files.")
+    print(f"Found {len(label_files)} label files.")
 
     def generator():
         for label_file in label_files:

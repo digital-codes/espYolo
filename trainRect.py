@@ -31,6 +31,7 @@ import layoutUtilsRect as layout
 GRID = (7, 5)
 IMAGE_SIZE = (176, 144)  # QCIF
 REG_ITEMS = 4
+BATCH_SIZE = 16
 
 
 checkpoint_cb = ModelCheckpoint(
@@ -91,6 +92,8 @@ def load_dataset(image_dir, classes, cells, regions, grid, output_size=None,mode
     if not label_files:
         raise ValueError("No 'labels.json' files found in the provided directory.")
 
+    label_files = sorted(label_files)
+    
     def generator():
         for label_file in label_files:
             with open(label_file, "r") as f:
@@ -136,13 +139,13 @@ def load_dataset(image_dir, classes, cells, regions, grid, output_size=None,mode
             tf.TensorSpec(shape=(output_size), dtype=tf.float32),
         ),
     )
-    return ds
+    return ds, label_files
 
 
 def split_dataset(ds, train_size, val_size, test_size):
     total_size = train_size + val_size + test_size
-    ds = ds.shuffle(buffer_size=total_size, reshuffle_each_iteration=False).cache()
-
+    # ds = ds.shuffle(buffer_size=total_size, reshuffle_each_iteration=False).cache()
+    ds = ds.cache()
     indexed_ds = ds.enumerate()
 
     train_ds = indexed_ds.filter(lambda i, _: i < train_size).map(lambda _, x: x)
@@ -234,7 +237,7 @@ def main():
         )  
     print(f"Output vector size: {output_size}.")
     
-    ds = load_dataset(image_dir, classes, cells, regions, GRID, output_size=output_size, mode=args.mode)
+    ds, dataFiles = load_dataset(image_dir, classes, cells, regions, GRID, output_size=output_size, mode=args.mode)
     print(f"Loaded dataset")
 
     if ds is None:
@@ -243,7 +246,8 @@ def main():
         sys.exit()
     else:
         print("Dataset loaded. Sample data:")
-        for image, label in ds.shuffle(buffer_size=100).take(5):
+        #for image, label in ds.shuffle(buffer_size=100).take(5):
+        for image, label in ds.take(5):
             print(f"Image shape: {image.shape}, Label shape: {label.shape}")
             print(f"Label vector: {label.numpy()}")
         if ds is None:
@@ -272,12 +276,12 @@ def main():
 
     # Split dataset into train, validation, and test sets
     dataset_size = len(list(ds))
+    dataset_batches = dataset_size // BATCH_SIZE
 
-    train_size = int(0.7 * dataset_size)
-    val_size = int(0.2 * dataset_size)
+    train_size = int(0.7 * dataset_batches) * BATCH_SIZE
+    val_size = int(0.2 * dataset_batches) * BATCH_SIZE
     test_size = dataset_size - train_size - val_size
-    batch_size = 16
-    steps = train_size // batch_size
+    steps = train_size // BATCH_SIZE
     print(
         f"Dataset split: {train_size} train, {val_size} validation, {test_size} test samples."
     )
@@ -286,15 +290,15 @@ def main():
     train_ds, val_ds, test_ds = split_dataset(ds, train_size, val_size, test_size)
 
     # Batch and prefetch
-    train_ds = train_ds.batch(batch_size).prefetch(tf.data.AUTOTUNE)
-    val_ds = val_ds.batch(batch_size).prefetch(tf.data.AUTOTUNE)
-    test_ds = test_ds.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    train_ds = train_ds.batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
+    val_ds = val_ds.batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
+    test_ds = test_ds.batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
 
     model.fit(
         train_ds,
         validation_data=val_ds,
         epochs=2000,
-        batch_size=batch_size,
+        batch_size=BATCH_SIZE,
         steps_per_epoch=steps,
         verbose=1,
         callbacks=[TqdmCallback(verbose=1), checkpoint_cb, lr_cb, stop_cb],
@@ -304,8 +308,8 @@ def main():
 
     model.save("final_model_regions_rect.keras")  # Native format
 
-    print("\nEvaluating model:")
-    test_steps = test_size // batch_size
+    print(f"\nEvaluating model from {dataFiles[train_size + val_size]}:")
+    test_steps = test_size // BATCH_SIZE
     results = model.evaluate(test_ds, steps=test_steps)
     for metric, value in zip(model.metrics_names, results):
         print(f"{metric}: {value:.4f}")
