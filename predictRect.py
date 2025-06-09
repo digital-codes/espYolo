@@ -44,6 +44,14 @@ parser.add_argument(
     type=str,
     help="Mode of operation: 'region' for region-based training, 'cell' for cell-based training.",
 )
+parser.add_argument(
+    "--shape",
+    "-s",
+    default="square",
+    type=str,
+    help="Shape of regions. square or rect",
+)
+
 args = parser.parse_args()
 
 
@@ -115,7 +123,7 @@ with open(os.path.join(imgSource, "label_map.json"), "r") as f:
 model = tf.keras.models.load_model(modelSource, compile=False)
 
 cells = layout.define_cells(IMAGE_SIZE, GRID)
-regions = layout.define_regions(cells,GRID)
+regions = layout.define_regions(cells,GRID, square=(args.shape == "square"))
 NUM_REGIONS = len(regions)
 print(f"Defined {len(regions)} regions for image size {IMAGE_SIZE}.")
 
@@ -158,10 +166,10 @@ for idx, (img, lbl) in enumerate(dataset):
     print("Img shape:", img_np.shape)
     # Predict
     pred_vec = model.predict(img[None, ...])[0]
-    save_path = os.path.join(OUTPUT_DIR, f"predvec_{idx:04d}.json")
-    with open(save_path, "w") as f:
-        json.dump(pred_vec.tolist(), f)
-        #json.dump([item for item in items], f)
+    if False:
+        save_path = os.path.join(OUTPUT_DIR, f"predvec_{idx:04d}.json")
+        with open(save_path, "w") as f:
+            json.dump(pred_vec.tolist(), f)
     
     items = layout.decode_label_vector(pred_vec, cells, regions, 1, 1, len(list(classes.keys())), mode=mode)
 

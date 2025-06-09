@@ -200,6 +200,13 @@ def main():
         type=str,
         help="Mode of operation: 'region' for region-based training, 'cell' for cell-based training.",
     )
+    parser.add_argument(
+        "--shape",
+        "-s",
+        default="square",
+        type=str,
+        help="Shape of regions. square or rect",
+    )
     args = parser.parse_args()
 
     image_dir = args.image_dir
@@ -211,7 +218,7 @@ def main():
     print(f"Loaded {len(classes)} classes from label_map.json")
 
     cells = layout.define_cells(IMAGE_SIZE, GRID)
-    regions = layout.define_regions(cells, GRID)
+    regions = layout.define_regions(cells, GRID, square=(args.shape == "square"))
     print(f"Defined {len(regions)} regions for image size {IMAGE_SIZE}.")
 
     if args.mode == "yolo":

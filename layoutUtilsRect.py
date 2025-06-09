@@ -14,21 +14,34 @@ def define_cells(image_size =(176,144), grid = (4,3)):
             cells.append((x_min, y_min, x_max, y_max))
     return cells
 
-def define_regions(cells, grid=(4,3)):
+def define_regions(cells, grid=(4,3), square=True):
     regions = []
-    # add all cells. cells are ordered row wise
-    for c in cells:
-        regions.append((cells.index(c), cells.index(c)))  # (start_cell, end_cell) is the same for single cell
-    #enlarge in steps of 1 
-    for s in range(1,min(grid)):
-        for r in range(0, grid[1] - s):
-            for c in range(0, grid[0] - s):
-                start_cell = c + r * grid[0]
-                end_cell = start_cell + (grid[0] + 1) * s
-                regions.append((start_cell, end_cell))  # (start_cell, end_cell) is the same for single cell
-    # add full size
-    if grid[0] != grid[1]:
-        regions.append((0, len(cells) - 1))            
+
+    if square:    
+        # add all cells. cells are ordered row wise
+        for c in cells:
+            regions.append((cells.index(c), cells.index(c)))  # (start_cell, end_cell) is the same for single cell
+        #enlarge in steps of 1 
+        for s in range(1,min(grid)):
+            for r in range(0, grid[1] - s):
+                for c in range(0, grid[0] - s):
+                    start_cell = c + r * grid[0]
+                    end_cell = start_cell + (grid[0] + 1) * s
+                    regions.append((start_cell, end_cell))  # (start_cell, end_cell) is the same for single cell
+        # add full size
+        if grid[0] != grid[1]:
+            regions.append((0, len(cells) - 1))            
+    else:
+        # enlarge in x and y
+        for height in range(1, grid[1]+1):
+            for width in range(1, grid[0]+1):
+                for y in range(0, grid[1] - height + 1):
+                    for x in range(0, grid[0] - width + 1):
+                        # print(f"Adding region {x},{y},{width}x{height} to regions")
+                        start_cell = x + y * grid[0]
+                        end_cell = start_cell + width - 1 + (height - 1) * grid[0]
+                        # print("Start/End :", start_cell, end_cell)
+                        regions.append((start_cell,end_cell))
 
     return regions
 
