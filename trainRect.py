@@ -59,6 +59,8 @@ def build_quadrant_model(input_shape, output_dim):
     x = inputs
     # filterSizes = [16, 16, 32, 32, 64, 64, 128] # 128, 128]  # leave out 128, 128
     # filterSizes = [16, 32, 32, 64, 128 ] # 128, 128]  # leave out 128, 128
+    # filterSizes = [16, 16, 32, 64]  # 128, 128]  # leave out 128, 128
+    # filterSizes = [8, 16, 32, 64, 128]  # 128, 128]  # leave out 128, 128
     filterSizes = [16, 16, 32, 64]  # 128, 128]  # leave out 128, 128
     for f, filters in enumerate(filterSizes):
         x = tf.keras.layers.Conv2D(filters, 3, padding="same", activation="relu")(x)
