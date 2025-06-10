@@ -114,8 +114,6 @@ def load_dataset(image_dir, classes, cells, regions, grid, output_size=None, mod
                     bboxes,
                     labels,
                     len(classes.keys()),
-                    output_size,
-                    REG_ITEMS,
                     mode
                 )
                 
@@ -145,17 +143,7 @@ regions = layout.define_regions(cells,GRID, square=(args.shape == "square"))
 NUM_REGIONS = len(regions)
 print(f"Defined {len(regions)} regions for image size {IMAGE_SIZE}.")
 
-if args.mode == "yolo":
-    itemDef = "prob,class,x0,y1,x1,y1"
-    output_size = layout.get_output_size(
-        regions, reg_items=REG_ITEMS, item_size=len(itemDef.split(",")), class_num=1
-    )  # classes in item
-    print(f"Output vector size: {output_size}.")
-elif args.mode == "region":
-    #item = "class probability "
-    output_size = layout.get_output_size(
-        regions, reg_items=1, item_size=1, class_num=len(classes.keys())
-    )  
+output_size = layout.get_output_size(regions, class_num=len(classes.keys()),mode = args.mode)
 print(f"Output vector size: {output_size}.")
 
 # ds = load_dataset(image_dir, classes, cells, regions, GRID, output_size=output_size)
@@ -165,7 +153,9 @@ print(f"Output vector size: {output_size}.")
 # === Make sure output dir exists
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-dataset = load_dataset(imgSource, classes, cells, regions,GRID, output_size=output_size)
+dataset = load_dataset(imgSource, classes, cells, regions,GRID, output_size=output_size,mode=mode)
+
+print(f"Dataset loaded with {len(list(dataset))} items.")
 
 
 class_counts = [0] * len(list(classes.keys()))
@@ -189,7 +179,7 @@ for idx, (img, lbl) in enumerate(dataset):
         with open(save_path, "w") as f:
             json.dump(pred_vec.tolist(), f)
     
-    items = layout.decode_label_vector(pred_vec, cells, regions, 1, 1, len(list(classes.keys())), mode=mode)
+    items = layout.decode_label_vector(pred_vec, cells, regions, len(list(classes.keys())), mode=mode)
 
     if len(items) == 0:
         print(f"No items found in prediction vector for image {idx}. Skipping...")

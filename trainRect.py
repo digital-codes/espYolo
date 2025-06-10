@@ -125,10 +125,10 @@ def load_dataset(image_dir, classes, cells, regions, grid, output_size=None,mode
                     bboxes,
                     labels,
                     len(classes.keys()),
-                    output_size,
-                    REG_ITEMS,
                     mode
                 )
+
+
 
             yield image, labelVector  # (bboxes, labels)
 
@@ -224,17 +224,7 @@ def main():
     regions = layout.define_regions(cells, GRID, square=(args.shape == "square"))
     print(f"Defined {len(regions)} regions for image size {IMAGE_SIZE}.")
 
-    if args.mode == "yolo":
-        itemDef = "prob,class,x0,y1,x1,y1"
-        output_size = layout.get_output_size(
-            regions, reg_items=REG_ITEMS, item_size=len(itemDef.split(",")), class_num=1
-        )  # classes in item
-        print(f"Output vector size: {output_size}.")
-    elif args.mode == "region":
-        #item = "class probability "
-        output_size = layout.get_output_size(
-            regions, reg_items=1, item_size=1, class_num=len(classes.keys())
-        )  
+    output_size = layout.get_output_size(regions, class_num=len(classes.keys()),mode = args.mode)
     print(f"Output vector size: {output_size}.")
     
     ds, dataFiles = load_dataset(image_dir, classes, cells, regions, GRID, output_size=output_size, mode=args.mode)
