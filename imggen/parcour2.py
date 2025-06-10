@@ -3,7 +3,8 @@ import numpy as np
 import json
 from PIL import Image
 from PIL import ImageDraw
-import sys 
+import sys
+import random
 
 from vapory import (
     Scene,
@@ -24,8 +25,29 @@ from vapory import (
     ColorMap,
 )
 
+# Output directory for frames
+if len(sys.argv) > 1:
+    output_dir = sys.argv[1]
+else:
+    output_dir = "output_frames"
+
+os.makedirs(output_dir, exist_ok=True)
+
 included = ["textures.inc"]
 # see https://www.f-lohmueller.de/pov_tut/tex/tex_160d.htm
+
+textureNames = [
+    "Red_Marble",
+    "White_Marble",
+    "Blood_Marble",
+    "Blue_Agate",
+    "Cherry_Wood",
+    "Pine_Wood",
+    "Dark_Wood",
+    "Cork",
+    "Ruby_Glass",
+    "Dark_Green_Glass",
+]
 
 # A map_type 0 gives the default planar mapping.
 # A map_type 1 gives a spherical mapping (maps the image onto a sphere).
@@ -37,18 +59,131 @@ included = ["textures.inc"]
 # It is generally easiest to create the object at the origin, apply the texture,
 # then move it to wherever you want it.)
 
+green_shades = [
+    [0.0, 0.3, 0.0],  # Dark green
+    [0.1, 0.4, 0.1],  # Forest green
+    [0.2, 0.5, 0.2],  # Medium green
+    [0.3, 0.6, 0.3],  # Lime green
+    [0.4, 0.7, 0.4],  # Bright green
+    [0.5, 0.8, 0.5],  # Light green
+    [0.6, 0.9, 0.6],  # Pale green
+    [0.7, 1.0, 0.7],  # Mint green
+    [0.8, 1.0, 0.8],  # Soft green
+    [0.9, 1.0, 0.9],  # Pastel green
+]
+blue_shades = [
+    [0.0, 0.0, 0.3],  # Dark blue
+    [0.1, 0.1, 0.4],  # Navy blue
+    [0.2, 0.2, 0.5],  # Medium blue
+    [0.3, 0.3, 0.6],  # Royal blue
+    [0.4, 0.4, 0.7],  # Bright blue
+    [0.5, 0.5, 0.8],  # Light blue
+    [0.6, 0.6, 0.9],  # Sky blue
+    [0.7, 0.7, 1.0],  # Pale blue
+    [0.8, 0.8, 1.0],  # Soft blue
+    [0.9, 0.9, 1.0],  # Pastel blue
+]
+
+red_shades = [
+    [0.3, 0.0, 0.0],  # Dark red
+    [0.4, 0.1, 0.1],  # Crimson red
+    [0.5, 0.2, 0.2],  # Medium red
+    [0.6, 0.3, 0.3],  # Bright red
+    [0.7, 0.4, 0.4],  # Scarlet red
+    [0.8, 0.5, 0.5],  # Light red
+    [0.9, 0.6, 0.6],  # Coral red
+    [1.0, 0.7, 0.7],  # Pale red
+    [1.0, 0.8, 0.8],  # Soft red
+    [1.0, 0.9, 0.9],  # Pastel red
+]
+
+light_shades = [
+    [0.8, 0.8, 0.8],  # Light gray
+    [0.7, 0.7, 0.7],  # Medium-light gray
+    [0.81, 0.83, 0.82],  # Light gray variant
+    [0.72, 0.73, 0.71],  # Medium-light gray variant
+    [0.6, 0.6, 0.6],  # Medium gray
+    [0.5, 0.5, 0.5],  # Medium-dark gray
+    [0.9, 0.9, 0.9],  # Near white
+    [0.85, 0.85, 0.85],  # Soft light gray
+    [0.75, 0.75, 0.75],  # Medium-light gray
+    [1.0, 1.0, 1.0],  # Pure white
+]
+
+dark_gray_shades = [
+    [0.1, 0.1, 0.1],  # Very dark gray
+    [0.15, 0.15, 0.15],  # Dark gray
+    [0.2, 0.2, 0.2],  # Medium-dark gray
+    [0.25, 0.25, 0.25],  # Slightly lighter dark gray
+    [0.3, 0.3, 0.3],  # Neutral gray
+    [0.35, 0.35, 0.35],  # Medium gray
+]
+
+all_shades = [
+    [r, g, b]
+    for r in np.linspace(0.0, 1.0, 30)
+    for g in np.linspace(0.0, 1.0, 30)
+    for b in np.linspace(0.0, 1.0, 30)
+]
+
 
 def color(rgb):
     return Pigment("color", rgb)
 
 
-# Output directory for frames
-if len(sys.argv) > 1:
-    output_dir = sys.argv[1]
-else:
-    output_dir = "output_frames"
+# define object sizes
+MIN_SIZE = 0.01  # Minimum size for objects
+MAX_SIZE = 0.1  # Maximum size for objects
 
-os.makedirs(output_dir, exist_ok=True)
+# texture files
+tf = os.listdir("textures")
+texFiles = [os.sep.join(["textures", f]) for f in tf if f.startswith("texture_")]
+
+
+def createTexture(tx=None, color=None):
+    if tx is not None:
+        return Texture(tx)
+    elif color is not None:
+        return Texture(
+            Pigment("color", color),
+            Normal(
+                "bumps",
+                np.random.uniform(0.15, 0.35),
+                "scale",
+                np.random.uniform(0.05, 0.15),
+            ),
+            Finish(
+                "ambient",
+                np.random.uniform(0.2, 0.4),
+                "diffuse",
+                np.random.uniform(0.4, 0.6),
+                "roughness",
+                np.random.uniform(0.05, 0.2),
+            ),
+        )
+
+    else:
+        im = f'"{random.choice(texFiles)}"'
+        return Texture(
+            Pigment(
+                ImageMap("jpeg", im, "interpolate", 2),
+                "rotate",
+                [90, 0, 0],
+                "scale",
+                [2, 2, 2],
+                "translate",
+                [-1, 0, -1],
+            )
+        )
+
+
+
+def create_box(size, col=None):
+    """
+    Create a box object with specified position and color.
+    """
+    return Box(size,size, color(col))
+
 
 # Oval path parameters
 a, b = 0.25, 0.25  # 50 cm elliptical path
@@ -60,294 +195,63 @@ cam_h = 0.02  # Camera height above robot body
 
 camera_fov = 43.6  # horizontal FOV ~ matching 2.32 mm lens on ~1 mm sensor
 
-object_coords = [
-    {
-        "class": "box",
-        "type": "box",
-        "pos0": [0.2, 0, 0.3],
-        "pos1": [0.24, 0.04, 0.34],
-        "color": [1, 0.6, 0.5],
-    },  # Box
-    {
-        "class": "person",
-        "type": "cone",
-        "pos0": [0.1, 0, 0.1],
-        "r0": 0.03,
-        "pos1": [0.1, 0.05, 0.1],
-        "r1": 0.01,
-        "color": [1, 0.8, 0],
-    },  # Cone
-    {
-        "class": "ball",
-        "type": "sphere",
-        "pos0": [-0.1, 0.04, 0.05],
-        "r0": 0.04,
-        "color": [0.4, 0.6, 1],
-    },  # Sphere
-    {
-        "class": "fence",
-        "type": "box",
-        "pos0": [-0.51, 0, -0.5],
-        "pos1": [-0.49, 0.002, -0.25],
-        "color": [1, 0.1, 0.1],
-    },  # fence
-    {
-        "class": "fence",
-        "type": "box",
-        "pos0": [-0.51, 0, -0.25],
-        "pos1": [-0.49, 0.002, 0],
-        "color": [1, 0.1, 0.1],
-    },  # fence
-    {
-        "class": "fence",
-        "type": "box",
-        "pos0": [-0.51, 0, 0],
-        "pos1": [-0.49, 0.002, 0.25],
-        "color": [1, 0.1, 0.1],
-    },  # fence
-    {
-        "class": "fence",
-        "type": "box",
-        "pos0": [-0.51, 0, 0.25],
-        "pos1": [-0.49, 0.002, 0.5],
-        "color": [1, 0.1, 0.1],
-    },  # fence
-    {
-        "class": "fence",
-        "type": "box",
-        "pos0": [-0.5, 0, 0.51],
-        "pos1": [-0.25, 0.002, 0.49],
-        "color": [1, 0.1, 0.1],
-    },  # fence
-    {
-        "class": "fence",
-        "type": "box",
-        "pos0": [-0.25, 0, 0.51],
-        "pos1": [0, 0.002, 0.49],
-        "color": [1, 0.1, 0.1],
-    },  # fence
-    {
-        "class": "fence",
-        "type": "box",
-        "pos0": [0, 0, 0.51],
-        "pos1": [0.25, 0.002, 0.49],
-        "color": [1, 0.1, 0.1],
-    },  # fence
-    {
-        "class": "fence",
-        "type": "box",
-        "pos0": [0.25, 0, 0.51],
-        "pos1": [0.5, 0.002, 0.49],
-        "color": [1, 0.1, 0.1],
-    },  # fence
-    {
-        "class": "fence",
-        "type": "box",
-        "pos0": [0.51, 0, 0.5],
-        "pos1": [0.49, 0.002, 0.25],
-        "color": [1, 0.1, 0.1],
-    },  # fence
-    {
-        "class": "fence",
-        "type": "box",
-        "pos0": [0.51, 0, 0.25],
-        "pos1": [0.49, 0.002, 0],
-        "color": [1, 0.1, 0.1],
-    },  # fence
-    {
-        "class": "fence",
-        "type": "box",
-        "pos0": [0.51, 0, 0],
-        "pos1": [0.49, 0.002, -0.25],
-        "color": [1, 0.1, 0.1],
-    },  # fence
-    {
-        "class": "fence",
-        "type": "box",
-        "pos0": [0.51, 0, -0.25],
-        "pos1": [0.49, 0.002, -0.5],
-        "color": [1, 0.1, 0.1],
-    },  # fence
-    {
-        "class": "fence",
-        "type": "box",
-        "pos0": [0.5, 0, -0.51],
-        "pos1": [0.25, 0.002, -0.49],
-        "color": [1, 0.1, 0.1],
-    },  # fence
-    {
-        "class": "fence",
-        "type": "box",
-        "pos0": [0.25, 0, -0.51],
-        "pos1": [0, 0.002, -0.49],
-        "color": [1, 0.1, 0.1],
-    },  # fence
-    {
-        "class": "fence",
-        "type": "box",
-        "pos0": [0, 0, -0.51],
-        "pos1": [-0.25, 0.002, -0.49],
-        "color": [1, 0.1, 0.1],
-    },  # fence
-    {
-        "class": "fence",
-        "type": "box",
-        "pos0": [-0.25, 0, -0.51],
-        "pos1": [-0.5, 0.002, -0.49],
-        "color": [1, 0.1, 0.1],
-    },  # fence
-]
-
-
-
-def oval_track_segments(
-    radius=0.25, width=0.02, height=0.001, segments=60, color=[1, 1, 1], rot=[0, 0, 0]
-):
-    trackObjects = []
-
-    arc_segments = segments // 2
-    straight_segments = segments // 8
-
-    # Length of straight path = approx arc length
-    straight_length = (
-        straight_segments * width
-    )  # 2 * radius  # roughly matching semicircle length
-    segment_length = straight_length / straight_segments
-
-    # STRAIGHT SEGMENTS (along Z axis)
-    for i in range(straight_segments):
-        z = -straight_length / 2 + i * segment_length
-        # Left side
-        trackObjects.append(
-            {
-                "class": "track",
-                "type": "box",
-                "pos0": [-radius - width / 2, height, z - width / 2],
-                "pos1": [-radius + width / 2, height + 0.001, z + width / 2],
-                "color": color,
-                "rotate": rot,
-            }
-        )
-        # Right side
-        trackObjects.append(
-            {
-                "class": "track",
-                "type": "box",
-                "pos0": [radius - width / 2, height, z - width / 2],
-                "pos1": [radius + width / 2, height + 0.001, z + width / 2],
-                "color": color,
-                "rotate": rot,
-            }
-        )
-
-    # ARC SEGMENTS (top and bottom)
-    for i in range(arc_segments + 1):
-        theta = np.pi * i / arc_segments  # 0 to pi
-
-        # Top arc (connects left to right)
-        x = radius * np.cos(theta)
-        z = straight_length / 2 + radius * np.sin(theta)
-        trackObjects.append(
-            {
-                "class": "track",
-                "type": "box",
-                "pos0": [x - width / 2, height, z - width / 2],
-                "pos1": [x + width / 2, height + 0.001, z + width / 2],
-                "color": color,
-                "rotate": rot,
-            }
-        )
-
-        # Bottom arc (connects right to left)
-        x = -radius * np.cos(theta)
-        z = -straight_length / 2 - radius * np.sin(theta)
-        trackObjects.append(
-            {
-                "class": "track",
-                "type": "box",
-                "pos0": [x - width / 2, height, z - width / 2],
-                "pos1": [x + width / 2, height + 0.001, z + width / 2],
-                "color": color,
-                "rotate": rot,
-            }
-        )
-
-    return trackObjects
-
-
-trackLines = oval_track_segments()
-
-for t in trackLines:
-    object_coords.append(
-        {
-            "class": "track",
+def createObjects():
+    numBoxes = random.randint(1, 5)
+    numBalls = random.randint(1, 3)
+    numPersons = random.randint(1, 4)
+    numFences = random.randint(3, 6)
+    numTracks = random.randint(2, 6)
+    obj_coordinates = []
+    for _ in range(numBoxes):
+        pos0 = [np.random.uniform(-0.45, 0.45), 0, np.random.uniform(-0.45, 0.45)]
+        pos1 = [pos0[0] + np.random.uniform(MIN_SIZE, MAX_SIZE), np.random.uniform(MIN_SIZE, MAX_SIZE), pos0[2] + np.random.uniform(MIN_SIZE, MAX_SIZE)]
+        color = random.choice(all_shades)
+        obj_coordinates.append({
+            "class": "box",
             "type": "box",
-            "rot": t.get("rotate", [0, 0, 0]),
-            "pos0": t["pos0"],
-            "pos1": t["pos1"],
-            "color": [1, 1, 1],
-        }
-    )
-
-
-texture1 = Texture(
-    Pigment(
-        ImageMap("jpeg", '"textures/img1.jpg"', "interpolate", 2),
-        "rotate",
-        [90, 0, 0],
-        "scale",
-        [2, 2, 2],
-        "translate",
-        [-1, 0, -1],
-    )
-)
-texture2 = Texture(
-    Pigment(
-        ImageMap("jpeg", '"textures/img2.jpg"', "interpolate", 2),
-        "rotate",
-        [90, 0, 0],
-        "scale",
-        [1, 1, 1],
-        "translate",
-        [-1, 0, -1],
-    )
-)
-
-# Tennis ball with yellow-green fuzzy texture
-texture3 = Texture(
-    Pigment("color", [0.85, 1.0, 0.3]),  # Tennis ball yellow-green
-    Finish("ambient", 0.3, "diffuse", 0.6, "roughness", 0.1),
-    Normal("bumps", 0.2, "scale", 0.05),  # Slight fuzz effect
-)
-
-# dark stone
-texture4 = Texture(
-    Pigment("color", [0.1, 0.1, 0.1]),  # Dark gray (almost black)
-    Normal("bumps", 0.3, "scale", 0.05),  # Subtle surface structure
-    Finish("ambient", 0.1, "diffuse", 0.7, "roughness", 0.2),
-)
-
-# texture6 = Texture(
-#    Pigment('wood', 'color_map', wood_colormap, 'scale', [0.3, 1, 0.3]),
-#    Finish('ambient', 0.1, 'diffuse', 0.9)
-# )
-
-objects = []
-for obj in object_coords:
-    if obj["type"] == "box":
-        if (obj["class"] == "track") or (obj["class"] == "fence"):
-            objects.append(Box(obj["pos0"], obj["pos1"], color(obj["color"])))
-        else:
+            "pos0": pos0,
+            "pos1": pos1,
+            "color": color,
+        })
+    for _ in range(numFences):
+        pos0 = [np.random.uniform(-0.45, 0.45), 0, np.random.uniform(-0.45, 0.45)]
+        pos1 = [pos0[0] + np.random.uniform(.05, .08), 0.002, pos0[2] + np.random.uniform(.05, .08)]
+        color = random.choice(red_shades)
+        obj_coordinates.append({
+            "class": "box",
+            "type": "fence",
+            "pos0": pos0,
+            "pos1": pos1,
+            "color": color,
+        })
+    for _ in range(numTracks):
+        pos0 = [np.random.uniform(-0.35, 0.35), 0, np.random.uniform(-0.35, 0.35)]
+        pos1 = [pos0[0] + np.random.uniform(.02, .06), 0.002, pos0[2] + np.random.uniform(.05, .08)]
+        color = random.choice(light_shades)
+        obj_coordinates.append({
+            "class": "box",
+            "type": "track",
+            "pos0": pos0,
+            "pos1": pos1,
+            "color": color,
+        })
+        
+    objects = []
+    for obj in obj_coordinates:
+        if obj["type"] == "box":
+            if obj["class"] == "track" or obj["class"] == "fence":
+                objects.append(Box(obj["pos0"], obj["pos1"], color(obj["color"])))
+            else:
+                objects.append(Box(obj["pos0"], obj["pos1"], createTexture(color = random.choice(random.choice([green_shades, blue_shades])))))
+        elif obj["type"] == "cone":
             objects.append(
-                Box(obj["pos0"], obj["pos1"], Texture("Dark_Wood"))
-            )  # color(obj["color"])))
-    elif obj["type"] == "cone":
-        objects.append(
-            Cone(obj["pos0"], obj["r0"], obj["pos1"], obj["r1"], Texture("Cork"))
-        )  # color(obj["color"]))
-    elif obj["type"] == "sphere":
-        # objects.append(Sphere(obj["pos0"], obj["r0"], color(obj["color"])))
-        objects.append(Sphere(obj["pos0"], obj["r0"], texture3))
+                Cone(obj["pos0"], obj["r0"], obj["pos1"], obj["r1"], createTexture(tx = random.choice(textureNames)))
+            )
+        elif obj["type"] == "sphere":
+            objects.append(Sphere(obj["pos0"], obj["r0"], createTexture(color=random.choice(blue_shades))))
+        
+
+    return objects, obj_coordinates
 
 
 birds_eye_camera = Camera(
@@ -369,17 +273,11 @@ side_camera = Camera(
 )
 
 
-def robot_position(t, duration, randomize=False):
-    if randomize:
-        angle = np.random.uniform(0, 2 * np.pi)
-        x = np.random.uniform(-0.45, 0.45)
-        y = np.random.uniform(0, 0.02)
-        z = np.random.uniform(-0.45, 0.45)
-    else:
-        angle = 2 * np.pi * (1.5 * t / duration)
-        x = a * np.cos(angle)
-        y = 0
-        z = b * np.sin(angle)
+def robot_position():
+    angle = np.random.uniform(0, 2 * np.pi)
+    x = np.random.uniform(-0.45, 0.45)
+    y = np.random.uniform(0, 0.02)
+    z = np.random.uniform(-0.45, 0.45)
     return [x, y, z, np.degrees(angle)]
 
 
@@ -464,42 +362,6 @@ def get_camera_basis(cam_pos, look_at):
     return right, up, forward
 
 
-def project_point_(point, cam_pos, look_at, fov_deg, img_width, img_height):
-    """
-    Projects a 3D world-space point onto 2D image space using pinhole projection.
-    Returns 2D screen coordinates and camera-space coordinates (or None if not visible).
-    """
-    right, up, forward = get_camera_basis(cam_pos, look_at)
-    # print("Camera basis vectors:", right, up, forward)
-
-    # Build rotation matrix: columns = right, up, -forward
-    R = np.stack([right, up, forward], axis=1)
-
-    # Transform point into camera space
-    p_world = np.array(point) - np.array(cam_pos)
-    p_cam = np.dot(R.T, p_world)
-
-    # print("Point in camera space:", p_cam)
-    # Reject points behind the camera
-    if p_cam[2] <= 0:
-        return None, p_cam
-
-    # Perspective projection
-    fov_rad = np.radians(fov_deg)
-    aspect = img_width / img_height
-
-    x_ndc = p_cam[0] / (p_cam[2] * np.tan(fov_rad / 2))
-    y_ndc = p_cam[1] / (p_cam[2] * np.tan(fov_rad / 2) / aspect)
-
-    x_screen = int((x_ndc + 1) * img_width / 2)
-    y_screen = int((1 - y_ndc) * img_height / 2)
-
-    if not (0 <= x_screen < img_width and 0 <= y_screen < img_height):
-        return None, p_cam  # outside image frame
-
-    return (x_screen, y_screen), p_cam
-
-
 def project_point(point, cam_pos, look_at, fov_deg, img_width, img_height):
     right, up, forward = get_camera_basis(cam_pos, look_at)
     R = np.stack([right, up, forward], axis=1)
@@ -569,7 +431,7 @@ def estimate_bounding_box(
     final_area = abs(x_max - x_min) * abs(y_max - y_min)
     # ignore if fraction below .5
     if final_area < 0.5 * init_area:
-        #print(f"Visible bounding box too small: initial area {init_area}, final area {final_area}")
+        # print(f"Visible bounding box too small: initial area {init_area}, final area {final_area}")
         drop_object = True
 
     if x_min >= x_max or y_min >= y_max:
@@ -581,7 +443,11 @@ def estimate_bounding_box(
         return None, None, drop_object
 
     # return x,y,w,h
-    return [int(x_min), int(y_min), int(x_max - x_min), int(y_max - y_min)], p_cam, drop_object
+    return (
+        [int(x_min), int(y_min), int(x_max - x_min), int(y_max - y_min)],
+        p_cam,
+        drop_object,
+    )
 
 
 def lookat_point(pos, cam_rot=1):
@@ -597,12 +463,9 @@ def lookat_point(pos, cam_rot=1):
     return [x, 0, z]  # Look at point in front of the robot
 
 
-def create_scene(t, duration, view="robot", randomize=False):
-    pos = robot_position(t, duration, randomize)
-
-    # def cam_pos(x, y, z, ry, rz, h=0.02):
-    if randomize:
-        cam_h = np.random.uniform(0.02, 0.04)  # Random camera height
+def create_scene(view="robot"):
+    pos = robot_position()
+    cam_h = np.random.uniform(0.02, 0.04)  # Random camera height
     camera_pos = cam_pos(pos[0], 0, pos[2], ry, 0, cam_h)[2]
     look_at = lookat_point(pos, 1)  # Look at point in front of the robot
     angle = pos[3]  # angle in degrees
@@ -617,170 +480,80 @@ def create_scene(t, duration, view="robot", randomize=False):
     elif view == "side":
         camera = side_camera
 
-    # track = oval_track_segments()
-
     # Create plane with texture1
-    plane = Plane([0, 1, 0], 0, texture1, "translate", [0, -0.01, 0])
+    plane = Plane([0, 1, 0], 0, createTexture(), "translate", [0, -0.01, 0])
+    floor = Box([-0.5, -0.01, -0.5], [0.5, 0, 0.5], createTexture(color=(random.choice(dark_gray_shades))))
 
-    pointer = Cylinder(
-        [camera_pos[0], camera_pos[1] + 0.005, camera_pos[2]],  # camera_pos,
-        look_at,
-        0.001,  # Thin line
-        color([1, 0, 0]),  # Red color for visibility
+    objects, obj_coordinates = createObjects()
+
+    globalLight = LightSource(
+        [
+            np.random.uniform(-0.1, 0.1),
+            np.random.uniform(9.5, 10.5),
+            np.random.uniform(-0.1, 0.1),
+        ],
+        "color",
+        [
+            np.random.uniform(0.9, 1.1),
+            np.random.uniform(0.9, 1.1),
+            np.random.uniform(0.9, 1.1),
+        ],
+        "shadowless",
     )
-    antenna = Cylinder(
-        camera_pos,
-        [camera_pos[0], camera_pos[1] + 0.05, camera_pos[2]],
-        0.005,  # Thin antenna
-        color([1, 1, 0]),  # Yellow color for visibility
+    spotLight = LightSource(
+        [
+            np.random.uniform(0.6, 0.8),
+            np.random.uniform(0.3, 0.5),
+            np.random.uniform(0.6, 0.8),
+        ],
+        "color",
+        [
+            np.random.uniform(0.4, 0.6),
+            np.random.uniform(0.4, 0.6),
+            np.random.uniform(0.4, 0.6),
+        ],
+        "spotlight",
+        "radius",
+        40,
+        "point_at",
+        [0, 0, 0],
     )
-
-
-    if randomize:
-        idxs = [i for i,t in enumerate(object_coords) if t["class"] == "track"]
-        for i in idxs:
-            obj = object_coords[i]
-            item_color = [
-            np.random.uniform(0.9, 1.1),
-            np.random.uniform(0.9, 1.1),
-            np.random.uniform(0.9, 1.1),
-            ]
-            objects[i] = Box(obj["pos0"], obj["pos1"], color(item_color))
-            
-        idxs = [i for i,t in enumerate(object_coords) if t["class"] == "fence"]
-        for i in idxs:
-            obj = object_coords[i]
-            item_color = [
-            np.random.uniform(0.9, 1.1),
-            np.random.uniform(0.0, .1),
-            np.random.uniform(0.0, .1),
-            ]
-            objects[i] = Box(obj["pos0"], obj["pos1"], color(item_color))
-
-    # floor = Box([-0.5, -0.01, -0.5], [0.5, 0, 0.5], color([0.9, 0.9, 0.0])),
-    if randomize:
-        texture4 = Texture(
-            Pigment(
-                "color",
-                [
-                    np.random.uniform(0.08, 0.12),
-                    np.random.uniform(0.08, 0.12),
-                    np.random.uniform(0.08, 0.12),
-                ],
-            ),  # Dark gray (almost black)
-            Normal(
-                "bumps",
-                np.random.uniform(0.2, 0.4),
-                "scale",
-                np.random.uniform(0.03, 0.07),
-            ),  # Subtle surface structure
-            Finish(
-                "ambient", 0.1, "diffuse", 0.7, "roughness", np.random.uniform(0.1, 0.3)
-            ),
-        )
-    floor = Box([-0.5, -0.01, -0.5], [0.5, 0, 0.5], texture4)
-
-    if randomize:
-        globalLight = LightSource(
-            [
-                np.random.uniform(-0.1, 0.1),
-                np.random.uniform(9.5, 10.5),
-                np.random.uniform(-0.1, 0.1),
-            ],
-            "color",
-            [
-                np.random.uniform(0.9, 1.1),
-                np.random.uniform(0.9, 1.1),
-                np.random.uniform(0.9, 1.1),
-            ],
-            "shadowless",
-        )
-        spotLight = LightSource(
-            [
-                np.random.uniform(.6,.8),
-                np.random.uniform(.3,.5),
-                np.random.uniform(.6,.8),
-            ],
-            "color",
-            [
-                np.random.uniform(.4,.6),
-                np.random.uniform(.4,.6),
-                np.random.uniform(.4,.6),
-            ],
-            "spotlight",
-            "radius",
-            40,
-            "point_at",
-            [0, 0, 0],
-        )
-    else:
-        globalLight = LightSource([0, 10, 0], "color", [1.0, 1.0, 1.0], "shadowless")
-        spotLight = LightSource(
-            [0.7, 0.4, 0.7],
-            "color",
-            [0.5, 0.5, 0.5],
-            "spotlight",
-            "radius",
-            40,
-            "point_at",
-            [0, 0, 0],
-        )
 
     sc = Scene(
         camera,
         objects=[
             globalLight,
             spotLight,
+            # robot
             robot_union(pos[0], pos[2], rx, ry, rz, angle),
-            # pointer,
-            # antenna,
-            ## body
-            # Box([pos[0] - rx/2, 0, pos[2] - rz/2], [pos[0] + rx/2, ry, pos[2] + rz/2], color([0.2, 0.2, 0.2])),
-            # camera mount
-            # Box([pos[0] - rx/4, ry + .01, pos[2] - rz/4], [pos[0] + rx/4, ry + 0.05, pos[2] + rz/4], color([0.3, 0.3, 0.3])),
-            ## wheels
-            ##Cylinder([pos[0] + 0.025, 0.005, pos[2] - 0.05], [pos[0] + 0.025, 0.005, pos[2] - 0.07], 0.01, color([0.05, 0.05, 0.05])),
-            ## Cylinder([pos[0] - 0.025, 0.005, pos[2] - 0.05], [pos[0] - 0.025, 0.005, pos[2] - 0.07], 0.01, color([0.05, 0.05, 0.05])),
             # background plane
             plane,
             # Arena floor
             floor,
-            # Oval track (50 cm diameter, 2 cm width)
-            # *track,
             # objects
             *objects,
-            # Box([0.2, 0, 0.2], [0.25, 0.05, 0.25], color([1, 0.6, 0.5])),
-            # Cone([0.1, 0, 0.1], 0.03, [0.1, 0.08, 0.1], 0, color([1, 0.8, 0])),
-            # Sphere([-0.2, 0.04, 0.25], 0.04, color([0.4, 0.6, 1])),
-            # bg
             Background("color", [1, 10, 1]),
         ],
         included=included,
     )
-    return sc, pos, camera_pos, look_at
+    return sc, pos, camera_pos, look_at, obj_coordinates
 
 
-# Animation parameters
-duration = 60
-fps = 60
-frames = int(duration * fps)
+################################
 
-randomScene = True
-
-img_width = 176 # 600
-img_height = 144 # 450
-
-unique_classes = {obj["class"] for obj in object_coords}
-class_map = {key: idx for idx, key in enumerate(unique_classes) }
+img_width = 176  # 600
+img_height = 144  # 450
+frames = 10
+unique_classes = {"person": 0, "box":1, "ball":2, "fence":3, "track":4}
+class_map = {key: idx for idx, key in enumerate(unique_classes)}
 print("Unique classes:", class_map)
-with open(os.path.join(output_dir,"label_map.json"),"w") as f:
+with open(os.path.join(output_dir, "label_map.json"), "w") as f:
     json.dump(class_map, f, indent=4)
 
 for i in range(frames):
     print("\n\nRendering frame", i, "of", frames)
-    t = i / fps
-    for view in ["robot"]:  # , "bird", "side"]:  # , "bird", "side"]:
-        scene, pos, camera_pos, look_at = create_scene(t, duration, view, randomScene)
+    for view in ["robot", "bird", "side"]:  # , "bird", "side"]:
+        scene, pos, camera_pos, look_at, obj_coordinates = create_scene(view)
 
         scene.render(
             os.path.join(output_dir, f"{view}_{i:04d}.png"),
@@ -790,24 +563,12 @@ for i in range(frames):
             antialiasing=0.01,
         )
 
-    # project_point(point, cam_pos, look_at, fov_deg, img_width, img_height)
-    # get coordinates
-    # pos = robot_position(t, duration)
-    # camera_pos = cam_pos(pos[0], 0, pos[2], ry, 0,cam_h)[2]
-    # look_at = lookat_point(pos)  # Look at point in front of the robot
     angle = pos[3]  # angle in degrees
-
-    # print("Robot position at frame", i, ":", pos)
-    # print("Camera position:", camera_pos)
-    # print("Look at position:", look_at)
-
-    # bounding boxes
-    # Project objects onto the camera view
 
     visible_obj = []
     img_name = os.path.join(f"robot_{i:04d}.png")
 
-    for obj in object_coords:
+    for obj in obj_coordinates:
         # Calculate the center position of the bounding box
         if obj["type"] == "box":
             pnt = [
@@ -839,7 +600,7 @@ for i in range(frames):
                 pnt, size, camera_pos, look_at, camera_fov, img_width, img_height
             )
             if bb is not None:
-                #print(f"Object {obj['type']} bounding box at frame {i:04d}:", bb,dist)
+                # print(f"Object {obj['type']} bounding box at frame {i:04d}:", bb,dist)
                 visible_obj.append(
                     {
                         "class": obj["class"],
@@ -1008,7 +769,7 @@ for i in range(frames):
         bboxes.append(a["bounding_box"])
         labels.append(a["label"])
         zdistance.append(a["distance"][2])
-    
+
     with open(os.path.join(output_dir, f"robot_{i:04d}_labels.json"), "w") as f:
         json.dump(
             {
