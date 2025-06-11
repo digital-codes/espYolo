@@ -3,20 +3,33 @@ from PIL import Image
 import os
 import numpy as np
 import sys 
+import argparse
 
 # === CONFIGURATION ===
-MODEL_PATH = "best_model_regions.keras"
-OUTPUT_TFLITE_PATH = "model_regions_int8.tflite"
-REPRESENTATIVE_DATA_DIR = "imggen/output_frames/"  # folder with sample images
 IMAGE_SIZE = (176, 144)  # (height, width)
 
-if len(sys.argv) > 1:
-    modelSource = sys.argv[1]
-else:
-    modelSource = MODEL_PATH
 
-modelDest = "".join([modelSource.split(".keras")[0],".tflite"])
+parser = argparse.ArgumentParser(description="Convert model to tflite.")
+parser.add_argument(
+    "--image_dir",
+    "-i",
+    type=str,
+    required=True,
+    help="Path to the image root directory",
+)
+parser.add_argument(
+    "--model",
+    "-m",
+    required=True,
+    type=str,
+    help="Input model",
+)
+args = parser.parse_args()
 
+
+modelSource = args.model
+imagePath = args.image_dir
+modelDest = modelSource.split(".keras")[0] + ".tflite"
 
 # === LOAD REPRESENTATIVE IMAGES ===
 def load_image(path):
@@ -25,8 +38,8 @@ def load_image(path):
     return img
 
 def representative_data_gen():
-    image_files = [os.path.join(REPRESENTATIVE_DATA_DIR, f) 
-                   for f in os.listdir(REPRESENTATIVE_DATA_DIR) 
+    image_files = [os.path.join(imagePath, f) 
+                   for f in os.listdir(imagePath) 
                    if f.lower().endswith((".jpg", ".png"))]
     for path in image_files[:100]:  # Use max 100 images
         img = load_image(path)
@@ -74,6 +87,9 @@ interpreter = tf.lite.Interpreter(model_path=modelDest)
 interpreter.allocate_tensors()
 print("Input:", interpreter.get_input_details())
 print("Output:", interpreter.get_output_details())
+
+print("Input index:", interpreter.get_input_details()[0]["index"])
+print("Input scale/offset:", interpreter.get_input_details()[0]["quantization"])
 
 # Get used operators in the TFLite model
 used_operators = interpreter.get_tensor_details()
