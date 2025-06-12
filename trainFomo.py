@@ -14,9 +14,6 @@ NUM_OBJECTS = 5
 NUM_CLASSES = NUM_OBJECTS * NUM_SIZES # 5 classes, 3 sizes
 INCLUDE_EMPTY = True
 BATCH_SIZE = 4
-# Alpha: 0.35 .. .5  going from .35 to .5 increases size by approx 50%. .35 tflite is around 220kB, .5 around 330kB
-FINAL_CONV_CHANNELS = 128 # maybe use 64 for smaller images
-FINAL_CONV_SIZE = 3 # 1 for smalle images. 
 
 
 # Argument parsing
@@ -33,6 +30,9 @@ args.label_dir = args.label_dir if args.label_dir else args.image_dir
 
 INPUT_SHAPE = (240, 320, 3) if args.format == "qvga" else (144, 176, 3)  # HWC format
 OUTPUT_GRID = (INPUT_SHAPE[0]//16,INPUT_SHAPE[1]//16) # (9, 11)
+FINAL_CONV_CHANNELS = 128 if args.format != "qcif" else 3 
+FINAL_CONV_SIZE = 3 if args.format != "qcif" else 1 
+
 
 # Set directories
 IMAGE_DIR = args.image_dir
