@@ -9,8 +9,6 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 import argparse 
 
 # Constants
-#INPUT_SHAPE = (144, 176, 3)  # HWC format
-INPUT_SHAPE = (240,320, 3)  # HWC format
 NUM_SIZES = 3
 NUM_OBJECTS = 5
 NUM_CLASSES = NUM_OBJECTS * NUM_SIZES # 5 classes, 3 sizes
@@ -20,7 +18,6 @@ BATCH_SIZE = 16
 FINAL_CONV_CHANNELS = 128 # maybe use 64 for smaller images
 FINAL_CONV_SIZE = 3 # 1 for smalle images. 
 
-OUTPUT_GRID = (INPUT_SHAPE[0]//16,INPUT_SHAPE[1]//16) # (9, 11)
 
 # Argument parsing
 parser = argparse.ArgumentParser(description="Train FOMO model and export TFLite quantized model.")
@@ -30,8 +27,12 @@ parser.add_argument("--model","-m", type=str, required=True, help="Ouput model n
 parser.add_argument("--convert","-c", type=bool, default=False, help="Convert only (default: False)")
 parser.add_argument("--alpha","-a", type=float, default=.5, help="ALpha fraction for Mobilenet(default: .5)")
 parser.add_argument("--epochs","-e", type=int, default=30, help="Epochs (default: 30)")
+parser.add_argument("--format","-f", type=str, default="qcif", help="Image format (qcif, qvga)")
 args = parser.parse_args()
 args.label_dir = args.label_dir if args.label_dir else args.image_dir
+
+INPUT_SHAPE = (240, 320, 3) if args.format == "qvga" else (144, 176, 3)  # HWC format
+OUTPUT_GRID = (INPUT_SHAPE[0]//16,INPUT_SHAPE[1]//16) # (9, 11)
 
 # Set directories
 IMAGE_DIR = args.image_dir
