@@ -4,7 +4,7 @@ import json
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 
 import argparse 
 
@@ -13,7 +13,7 @@ NUM_SIZES = 3
 NUM_OBJECTS = 5
 NUM_CLASSES = NUM_OBJECTS * NUM_SIZES # 5 classes, 3 sizes
 INCLUDE_EMPTY = True
-BATCH_SIZE = 16
+BATCH_SIZE = 4
 # Alpha: 0.35 .. .5  going from .35 to .5 increases size by approx 50%. .35 tflite is around 220kB, .5 around 330kB
 FINAL_CONV_CHANNELS = 128 # maybe use 64 for smaller images
 FINAL_CONV_SIZE = 3 # 1 for smalle images. 
@@ -50,6 +50,13 @@ checkpoint_cb = ModelCheckpoint(
     verbose=1
 )
 
+# Stop training early if val_loss doesn't improve for 5 epochs
+earlystop_cb = EarlyStopping(
+    monitor="val_loss",
+    patience=5,         # number of epochs with no improvement before stopping
+    restore_best_weights=True,
+    verbose=1
+)
 
 # Re-define helper functions
 def load_sample(json_path):
@@ -140,7 +147,7 @@ if args.convert == False:
 
     model = build_mobilenetv2_fomo()
     model.compile(optimizer=Adam(1e-4), loss="categorical_crossentropy", metrics=["accuracy"])
-    model.fit(train_ds, validation_data=val_ds, epochs=EPOCHS, callbacks=[checkpoint_cb])
+    model.fit(train_ds, validation_data=val_ds, epochs=EPOCHS, callbacks=[checkpoint_cb,earlystop_cb])
 
     model_path = f"final_{args.model}.keras"
     model.save(model_path)
