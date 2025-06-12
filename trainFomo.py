@@ -9,15 +9,15 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 import argparse 
 
 # Constants
-INPUT_SHAPE = (144, 176, 3)  # HWC format
+#INPUT_SHAPE = (144, 176, 3)  # HWC format
+INPUT_SHAPE = (240,320, 3)  # HWC format
 NUM_SIZES = 3
 NUM_OBJECTS = 5
 NUM_CLASSES = NUM_OBJECTS * NUM_SIZES # 5 classes, 3 sizes
 INCLUDE_EMPTY = True
-BATCH_SIZE = 4
-EPOCHS = 30
-ALPHA = .5 # 0.35  . going from .35 to .5 increases size by approx 50%. .35 tflite is around 220kB, .5 around 330kB
-OUTPUT_GRID = (9, 11)
+BATCH_SIZE = 16
+# Alpha: 0.35 .. .5  going from .35 to .5 increases size by approx 50%. .35 tflite is around 220kB, .5 around 330kB
+OUTPUT_GRID = (INPUT_SHAPE[0]//16,INPUT_SHAPE[1]//16) # (9, 11)
 
 
 # Argument parsing
@@ -26,13 +26,16 @@ parser.add_argument("--image_dir","-i", type=str, required=True, help="Path to t
 parser.add_argument("--label_dir","-l", type=str, help="Path to the directory containing label JSON files. Defaults to image_dir.")
 parser.add_argument("--model","-m", type=str, required=True, help="Ouput model name")
 parser.add_argument("--convert","-c", type=bool, default=False, help="Convert only (default: False)")
+parser.add_argument("--alpha","-a", type=float, default=.5, help="ALpha fraction for Mobilenet(default: .5)")
+parser.add_argument("--epochs","-e", type=int, default=30, help="Epochs (default: 30)")
 args = parser.parse_args()
 args.label_dir = args.label_dir if args.label_dir else args.image_dir
 
 # Set directories
 IMAGE_DIR = args.image_dir
 LABEL_DIR = args.label_dir
-
+ALPHA = args.alpha
+EPOCHS = args.epochs
 
 # Save the best model (lowest validation loss)
 checkpoint_cb = ModelCheckpoint(
@@ -102,7 +105,7 @@ def get_tf_dataset(label_dir):
     return ds.batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
 
 
-def build_mobilenetv2_fomo_hswish(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alpha=ALPHA, include_empty=INCLUDE_EMPTY):
+def build_mobilenetv2_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alpha=ALPHA, include_empty=INCLUDE_EMPTY):
     input_layer = tf.keras.Input(shape=input_shape)
     base = tf.keras.applications.MobileNetV2(input_shape=input_shape, include_top=False, alpha=alpha, weights=None, input_tensor=input_layer)
     x = base.get_layer("block_13_expand_relu").output
@@ -129,7 +132,7 @@ train_ds = get_tf_dataset(LABEL_DIR)
 if args.convert == False:
     val_ds = get_tf_dataset(LABEL_DIR)
 
-    model = build_mobilenetv2_fomo_hswish()
+    model = build_mobilenetv2_fomo()
     model.compile(optimizer=Adam(1e-4), loss="categorical_crossentropy", metrics=["accuracy"])
     model.fit(train_ds, validation_data=val_ds, epochs=EPOCHS, callbacks=[checkpoint_cb])
 
