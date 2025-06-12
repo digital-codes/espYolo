@@ -18,7 +18,8 @@ INCLUDE_EMPTY = True
 BATCH_SIZE = 16
 # Alpha: 0.35 .. .5  going from .35 to .5 increases size by approx 50%. .35 tflite is around 220kB, .5 around 330kB
 OUTPUT_GRID = (INPUT_SHAPE[0]//16,INPUT_SHAPE[1]//16) # (9, 11)
-
+FINAL_CONV_CHANNELS = 128 # maybe use 64 for smaller images
+FINAL_CONV_SIZE = 3 # 1 for smalle images. 
 
 # Argument parsing
 parser = argparse.ArgumentParser(description="Train FOMO model and export TFLite quantized model.")
@@ -115,7 +116,7 @@ def build_mobilenetv2_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alp
     x = tf.keras.layers.Dropout(.3, name="dropout_features")(x)
 
     # Optional conv + activation
-    x = tf.keras.layers.Conv2D(64, kernel_size=1, use_bias=False)(x)
+    x = tf.keras.layers.Conv2D(FINAL_CONV_CHANNELS, kernel_size=FINAL_CONV_SIZE, use_bias=False)(x)
     x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.ReLU(max_value=6)(x)
 
