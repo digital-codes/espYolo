@@ -74,9 +74,12 @@ for idx,img in enumerate(imgFiles[:100]):
     
     # Draw rectangles on the image based on predictions
     draw = ImageDraw.Draw(image_)
+    #image_.show()
     detected = False
     for r in range(pred_shape[0]):
         for c in range(pred_shape[1]):
+            # scale down empty prediction
+            # pred_vec[r][c][0] *= .1
             max_cls = np.argmax(pred_vec[r][c])
             if max_cls > 0:  # Only draw if there's a class prediction
                 #print("Max class at grid cell ({},{}): {}".format(r, c, max_cls))

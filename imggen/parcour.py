@@ -85,16 +85,39 @@ object_coords = [
         "color": [0.4, 0.6, 1],
     },  # Sphere
     {
+        "class": "box",
+        "type": "box",
+        "pos0": [-0.2, 0, 0.3],
+        "pos1": [-0.22, 0.03, 0.32],
+        "color": [.5, 0.6, 0.8],
+    },  # Box
+    {
+        "class": "person",
+        "type": "cone",
+        "pos0": [-0.1, 0, 0.1],
+        "r0": 0.03,
+        "pos1": [-0.1, 0.03, 0.1],
+        "r1": 0.01,
+        "color": [.8, 0.8, .5],
+    },  # Cone
+    {
+        "class": "ball",
+        "type": "sphere",
+        "pos0": [-0.2, 0.04, 0.15],
+        "r0": 0.03,
+        "color": [0.4, 0.8, .2],
+    },  # Sphere
+    {
         "class": "fence",
         "type": "box",
         "pos0": [-0.51, 0, -0.5],
-        "pos1": [-0.49, 0.002, -0.25],
+        "pos1": [-0.49, 0.002, -0.3],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [-0.51, 0, -0.25],
+        "pos0": [-0.51, 0, -0.22],
         "pos1": [-0.49, 0.002, 0],
         "color": [1, 0.1, 0.1],
     },  # fence
@@ -102,13 +125,13 @@ object_coords = [
         "class": "fence",
         "type": "box",
         "pos0": [-0.51, 0, 0],
-        "pos1": [-0.49, 0.002, 0.25],
+        "pos1": [-0.49, 0.002, 0.2],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [-0.51, 0, 0.25],
+        "pos0": [-0.51, 0, 0.3],
         "pos1": [-0.49, 0.002, 0.5],
         "color": [1, 0.1, 0.1],
     },  # fence
@@ -116,13 +139,13 @@ object_coords = [
         "class": "fence",
         "type": "box",
         "pos0": [-0.5, 0, 0.51],
-        "pos1": [-0.25, 0.002, 0.49],
+        "pos1": [-0.3, 0.002, 0.49],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [-0.25, 0, 0.51],
+        "pos0": [-0.2, 0, 0.51],
         "pos1": [0, 0.002, 0.49],
         "color": [1, 0.1, 0.1],
     },  # fence
@@ -130,13 +153,13 @@ object_coords = [
         "class": "fence",
         "type": "box",
         "pos0": [0, 0, 0.51],
-        "pos1": [0.25, 0.002, 0.49],
+        "pos1": [0.2, 0.002, 0.49],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [0.25, 0, 0.51],
+        "pos0": [0.3, 0, 0.51],
         "pos1": [0.5, 0.002, 0.49],
         "color": [1, 0.1, 0.1],
     },  # fence
@@ -144,13 +167,13 @@ object_coords = [
         "class": "fence",
         "type": "box",
         "pos0": [0.51, 0, 0.5],
-        "pos1": [0.49, 0.002, 0.25],
+        "pos1": [0.49, 0.002, 0.3],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [0.51, 0, 0.25],
+        "pos0": [0.51, 0, 0.2],
         "pos1": [0.49, 0.002, 0],
         "color": [1, 0.1, 0.1],
     },  # fence
@@ -158,13 +181,13 @@ object_coords = [
         "class": "fence",
         "type": "box",
         "pos0": [0.51, 0, 0],
-        "pos1": [0.49, 0.002, -0.25],
+        "pos1": [0.49, 0.002, -0.2],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [0.51, 0, -0.25],
+        "pos0": [0.51, 0, -0.3],
         "pos1": [0.49, 0.002, -0.5],
         "color": [1, 0.1, 0.1],
     },  # fence
@@ -172,13 +195,13 @@ object_coords = [
         "class": "fence",
         "type": "box",
         "pos0": [0.5, 0, -0.51],
-        "pos1": [0.25, 0.002, -0.49],
+        "pos1": [0.2, 0.002, -0.49],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [0.25, 0, -0.51],
+        "pos0": [0.3, 0, -0.51],
         "pos1": [0, 0.002, -0.49],
         "color": [1, 0.1, 0.1],
     },  # fence
@@ -186,13 +209,13 @@ object_coords = [
         "class": "fence",
         "type": "box",
         "pos0": [0, 0, -0.51],
-        "pos1": [-0.25, 0.002, -0.49],
+        "pos1": [-0.2, 0.002, -0.49],
         "color": [1, 0.1, 0.1],
     },  # fence
     {
         "class": "fence",
         "type": "box",
-        "pos0": [-0.25, 0, -0.51],
+        "pos0": [-0.3, 0, -0.51],
         "pos1": [-0.5, 0.002, -0.49],
         "color": [1, 0.1, 0.1],
     },  # fence
@@ -201,7 +224,7 @@ object_coords = [
 
 
 def oval_track_segments(
-    radius=0.25, width=0.02, height=0.001, segments=60, color=[1, 1, 1], rot=[0, 0, 0]
+    radius=0.25, width=0.02, height=0.001, segments=10, color=[1, 1, 1], rot=[0, 0, 0]
 ):
     trackObjects = []
 
@@ -767,8 +790,8 @@ frames = int(duration * fps)
 
 randomScene = True
 
-img_width = 320 #176 # 600
-img_height = 240 # 144 # 450
+img_width = 176 # 320 #176 # 600
+img_height = 144 # 240 # 144 # 450
 
 unique_classes = {obj["class"] for obj in object_coords}
 class_map = {key: idx for idx, key in enumerate(unique_classes) }

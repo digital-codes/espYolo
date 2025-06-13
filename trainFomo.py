@@ -5,6 +5,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+from tensorflow.keras.losses import BinaryCrossentropy
 
 import argparse 
 
@@ -57,10 +58,30 @@ checkpoint_cb = ModelCheckpoint(
 # Stop training early if val_loss doesn't improve for 5 epochs
 earlystop_cb = EarlyStopping(
     monitor="val_loss",
-    patience=10,         # number of epochs with no improvement before stopping
+    patience=20,         # number of epochs with no improvement before stopping
     restore_best_weights=True,
     verbose=1
 )
+
+# weights for loss function penalizing empty classes
+
+def make_weighted_bce_loss(class_weights):
+    """
+    Returns a binary cross-entropy loss function that applies class weights.
+    class_weights: list or tensor of shape (num_classes + 1,)
+    """
+    class_weights = tf.constant(class_weights, dtype=tf.float32)
+
+    def weighted_bce(y_true, y_pred):
+        # Shape: (batch, grid_h, grid_w, num_classes+1)
+        bce = tf.keras.backend.binary_crossentropy(y_true, y_pred)  # same shape
+        weights = tf.reshape(class_weights, (1, 1, 1, -1))  # make broadcastable
+        weighted_bce = bce * weights
+        return tf.reduce_mean(weighted_bce)  # scalar
+    return weighted_bce
+
+weighted_loss = make_weighted_bce_loss([0.01] + [1.0] * NUM_CLASSES)  # downweight 'empty'
+
 
 # Re-define helper functions
 def load_sample(json_path):
@@ -94,6 +115,8 @@ def make_label_grid(bboxes, labels, img_shape, grid_shape, num_classes):
         cy = (y1 + y2) / 2
         gx = int(cx / cell_w)
         gy = int(cy / cell_h)
+        if gx >= grid_w or gy >= grid_h:
+            raise ValueError(f"Grid cell ({gy}, {gx}) out of bounds for grid shape {grid_shape} with image shape {img_shape}.")
         size = NUM_SIZES # init with max
         if NUM_SIZES > 0:
             # Calculate size based on bbox area
@@ -116,6 +139,7 @@ def data_generator(label_dir):
         img, bboxes, labels = load_sample(json_path)
         label_grid,class_sums = make_label_grid(bboxes, labels, INPUT_SHAPE[:2], OUTPUT_GRID, NUM_CLASSES)
         #print(f"Loaded {json_path} with {len(bboxes)} bboxes, class sums: {class_sums}")
+        #print(list(label_grid))
         yield img, label_grid
 
 def get_tf_dataset(label_dir):
@@ -130,29 +154,64 @@ def get_tf_dataset(label_dir):
 
 
 def build_mobilenetv2_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alpha=ALPHA):
+    print(f"Building MobileNetV2 FOMO model with input shape {input_shape}, num_classes {num_classes}, alpha {alpha}")
     class_channels = num_classes + 1
     input_layer = tf.keras.Input(shape=input_shape)
     base = tf.keras.applications.MobileNetV2(input_shape=input_shape, include_top=False, alpha=alpha, weights=None, input_tensor=input_layer)
     x = base.get_layer("block_13_expand_relu").output
+    print(f"Base layer output shape: {x.shape}")
 
     # Dropout after feature extraction
-    x = tf.keras.layers.Dropout(.2, name="dropout_features")(x)
+    x = tf.keras.layers.Dropout(.3, name="dropout_features")(x)
 
-    # Optional conv + activation
-    if FINAL_CONV_SIZE == 1:
-        x = tf.keras.layers.Conv2D(64, kernel_size=1, use_bias=False)(x)
-        x = tf.keras.layers.BatchNormalization()(x)
-        x = tf.keras.layers.ReLU(max_value=6)(x)
-    else:
-        x = tf.keras.layers.Conv2D(128, kernel_size=FINAL_CONV_SIZE, padding='same', dilation_rate=2)(x)
-        x = tf.keras.layers.BatchNormalization()(x)
-        x = tf.keras.layers.ReLU(max_value=6)(x)
+    if False:
+        # Optional conv + activation
+        if FINAL_CONV_SIZE == 1:
+            x = tf.keras.layers.Conv2D(OUTPUT_GRID[0] * OUTPUT_GRID[1] * class_channels, kernel_size=1, use_bias=False)(x)
+            x = tf.keras.layers.BatchNormalization()(x)
+            #x = tf.keras.layers.ReLU(max_value=6)(x)
+            x = tf.keras.layers.ReLU()(x)
+        else:
+            x = tf.keras.layers.Conv2D(128, kernel_size=FINAL_CONV_SIZE, padding='same', dilation_rate=2)(x)
+            x = tf.keras.layers.BatchNormalization()(x)
+            x = tf.keras.layers.ReLU(max_value=6)(x)
 
-    # Another dropout before final classifier head
-    x = tf.keras.layers.Dropout(.2, name="dropout_classhead")(x)
+        # Another dropout before final classifier head
+        x = tf.keras.layers.Dropout(.2, name="dropout_classhead")(x)
 
+    print(f"Layer output shape: {x.shape}")
     class_out = tf.keras.layers.Conv2D(class_channels, kernel_size=1, activation="sigmoid", name="class_output")(x)
+    print(f"Output layer output shape: {class_out.shape}")
     return tf.keras.Model(inputs=input_layer, outputs=class_out)
+
+def build_custom_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alpha=ALPHA):
+    print(f"Building custom FOMO model with input shape {input_shape}, num_classes {num_classes}, alpha {alpha}")
+    class_channels = num_classes + 1
+    inputs = tf.keras.Input(shape=input_shape)
+    x = inputs
+    filterSizes = [16, 16, 16, class_channels * 4]  # 128, 128]  # leave out 128, 128
+    for f, filters in enumerate(filterSizes):
+        x = tf.keras.layers.Conv2D(filters, 3, padding="same", activation="relu")(x)
+        x = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2)(x)
+        if f < len(filterSizes) - 1:
+            x = tf.keras.layers.Dropout(0.2)(x)
+        print(f"Layer {f}: {filters} filters, output shape: {x.shape}")
+
+    # Print layer size for debugging
+    x = tf.keras.layers.Flatten()(x)
+    print(f"Layer output shape: {x.shape}")
+    # dropout extra
+    x = tf.keras.layers.Dropout(0.2)(x)  # ✅ Dropout before output layer
+    # x = tf.keras.layers.Dense(filterSizes[-1], activation="relu")(x)
+    x = tf.keras.layers.Dense(OUTPUT_GRID[0] * OUTPUT_GRID[1] * class_channels, activation="sigmoid", name="class_output")(x)
+
+    outputs = tf.keras.layers.Reshape((OUTPUT_GRID[0], OUTPUT_GRID[1], class_channels))(x)
+
+    #outputs = tf.keras.layers.Dense(class_channels, activation="sigmoid")(x)
+
+    return tf.keras.Model(inputs, outputs)
+
+
 
 # Prepare and train the model
 full_ds = get_tf_dataset(LABEL_DIR)
@@ -162,8 +221,10 @@ val_ds = full_ds.skip(train_size)
 
 if args.convert == False:
 
-    model = build_mobilenetv2_fomo()
-    model.compile(optimizer=Adam(1e-3), loss="categorical_crossentropy", metrics=["accuracy"])
+    #model = build_mobilenetv2_fomo()
+    model = build_custom_fomo()
+    #model.compile(optimizer=Adam(1e-3), loss="categorical_crossentropy", metrics=["accuracy"])
+    model.compile(optimizer=Adam(1e-3), loss=weighted_loss, metrics=["accuracy"])
     model.fit(train_ds, validation_data=val_ds, epochs=EPOCHS, callbacks=[checkpoint_cb,earlystop_cb])
 
     model_path = f"final_{args.model}.keras"
