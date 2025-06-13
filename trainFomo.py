@@ -13,7 +13,6 @@ NUM_SIZES = 3
 NUM_OBJECTS = 5
 NUM_CLASSES = NUM_OBJECTS * NUM_SIZES # 5 classes, 3 sizes
 INCLUDE_EMPTY = True
-BATCH_SIZE = 4
 
 
 # Argument parsing
@@ -25,14 +24,17 @@ parser.add_argument("--convert","-c", type=bool, default=False, help="Convert on
 parser.add_argument("--alpha","-a", type=float, default=.5, help="ALpha fraction for Mobilenet(default: .5)")
 parser.add_argument("--epochs","-e", type=int, default=30, help="Epochs (default: 30)")
 parser.add_argument("--format","-f", type=str, default="qcif", help="Image format (qcif, qvga)")
+parser.add_argument("--rgb","-r", type=bool, default=False, help="Image RGB mode")
+parser.add_argument("--batch_size","-b", type=int, default=4, help="Batch size")
 args = parser.parse_args()
 args.label_dir = args.label_dir if args.label_dir else args.image_dir
 
-INPUT_SHAPE = (240, 320, 3) if args.format == "qvga" else (144, 176, 3)  # HWC format
+COLORS = 3 if args.rgb else 1  # RGB or grayscale
+INPUT_SHAPE = (240, 320, COLORS) if args.format == "qvga" else (144, 176, COLORS)  # HWC format
 OUTPUT_GRID = (INPUT_SHAPE[0]//16,INPUT_SHAPE[1]//16) # (9, 11)
 FINAL_CONV_CHANNELS = 128 if args.format != "qcif" else 3 
 FINAL_CONV_SIZE = 3 if args.format != "qcif" else 1 
-
+BATCH_SIZE = args.batch_size
 
 # Set directories
 IMAGE_DIR = args.image_dir
@@ -64,7 +66,7 @@ def load_sample(json_path):
         data = json.load(f)
     img_path = os.path.join(IMAGE_DIR, data["img"])
     img = tf.io.read_file(img_path)
-    img = tf.image.decode_png(img, channels=3)
+    img = tf.image.decode_png(img, channels=COLORS)
     img = tf.image.resize(img, (INPUT_SHAPE[0], INPUT_SHAPE[1]))
     img = tf.cast(img, tf.float32) / 255.0
 
