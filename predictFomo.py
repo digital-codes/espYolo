@@ -56,7 +56,7 @@ for d in dataFiles:
 for idx,img in enumerate(imgFiles[:100]):
     print("Processing image:", img)
     image = load_sample(img)
-    image_ = Image.fromarray((image * 255).astype(np.uint8))
+    image_ = Image.fromarray((image[..., 0] * 255).astype(np.uint8)) if COLORS == 1 else Image.fromarray((image * 255).astype(np.uint8))
     width = image_.width
     height = image_.height
     print("Img width,height:", width,height)
