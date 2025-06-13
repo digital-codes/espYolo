@@ -189,7 +189,7 @@ def build_custom_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alpha=AL
     class_channels = num_classes + 1
     inputs = tf.keras.Input(shape=input_shape)
     x = inputs
-    filterSizes = [32, 32, 16, class_channels * 4]  # 128, 128]  # leave out 128, 128
+    filterSizes = [64, 64, 32, class_channels]  # 128, 128]  # leave out 128, 128
     for f, filters in enumerate(filterSizes):
         x = tf.keras.layers.Conv2D(filters, 3, padding="same", activation="relu")(x)
         x = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2)(x)
@@ -200,12 +200,12 @@ def build_custom_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alpha=AL
     # Print layer size for debugging
     x = tf.keras.layers.Flatten()(x)
     print(f"Layer output shape: {x.shape}")
-    # dropout extra
-    x = tf.keras.layers.Dropout(0.2)(x)  # ✅ Dropout before output layer
-    # x = tf.keras.layers.Dense(filterSizes[-1], activation="relu")(x)
-    x = tf.keras.layers.Dense(OUTPUT_GRID[0] * OUTPUT_GRID[1] * class_channels, activation="sigmoid", name="class_output")(x)
 
-    outputs = tf.keras.layers.Reshape((OUTPUT_GRID[0], OUTPUT_GRID[1], class_channels))(x)
+    # x = tf.keras.layers.Dense(filterSizes[-1], activation="relu")(x)
+
+    #x = tf.keras.layers.Dense(OUTPUT_GRID[0] * OUTPUT_GRID[1] * class_channels, activation="sigmoid", name="class_output")(x)
+    x = tf.keras.layers.Reshape((OUTPUT_GRID[0], OUTPUT_GRID[1], class_channels))(x)
+    outputs = tf.keras.layers.Conv2D(class_channels, kernel_size=1, activation="sigmoid", name="class_output")(x)
 
     #outputs = tf.keras.layers.Dense(class_channels, activation="sigmoid")(x)
 
