@@ -9,10 +9,11 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 import argparse 
 
 # Constants
-NUM_SIZES = 3
-NUM_OBJECTS = 5
-NUM_CLASSES = NUM_OBJECTS * NUM_SIZES # 5 classes, 3 sizes
-INCLUDE_EMPTY = True
+import fomodefs as fomo
+OBJ_SIZES = fomo.OBJ_SIZES
+NUM_SIZES = len(OBJ_SIZES)  # Number of sizes
+NUM_TYPES = fomo.NUM_TYPES
+NUM_CLASSES = NUM_TYPES * (NUM_SIZES + 1) # 5 classes, 3 sizes
 
 
 # Argument parsing
@@ -32,7 +33,6 @@ args.label_dir = args.label_dir if args.label_dir else args.image_dir
 COLORS = 3 if args.rgb else 1  # RGB or grayscale
 INPUT_SHAPE = (240, 320, COLORS) if args.format == "qvga" else (144, 176, COLORS)  # HWC format
 OUTPUT_GRID = (INPUT_SHAPE[0]//16,INPUT_SHAPE[1]//16) # (9, 11)
-FINAL_CONV_CHANNELS = 128 if args.format != "qcif" else 3 
 FINAL_CONV_SIZE = 3 if args.format != "qcif" else 1 
 BATCH_SIZE = args.batch_size
 
@@ -41,6 +41,8 @@ IMAGE_DIR = args.image_dir
 LABEL_DIR = args.label_dir
 ALPHA = args.alpha
 EPOCHS = args.epochs
+
+
 
 # Save the best model (lowest validation loss)
 checkpoint_cb = ModelCheckpoint(
@@ -55,7 +57,7 @@ checkpoint_cb = ModelCheckpoint(
 # Stop training early if val_loss doesn't improve for 5 epochs
 earlystop_cb = EarlyStopping(
     monitor="val_loss",
-    patience=5,         # number of epochs with no improvement before stopping
+    patience=10,         # number of epochs with no improvement before stopping
     restore_best_weights=True,
     verbose=1
 )
@@ -74,36 +76,46 @@ def load_sample(json_path):
     labels = data["labels"]
     return img.numpy(), bboxes, labels
 
-def make_label_grid(bboxes, labels, img_shape, grid_shape, num_classes, include_empty):
-    grid_h, grid_w = grid_shape
-    img_h, img_w = img_shape
-    label = np.zeros((grid_h, grid_w, num_classes + 1 if include_empty else num_classes))
-    if include_empty:
-        label[..., 0] = 1.0
+def make_label_grid(bboxes, labels, img_shape, grid_shape, num_classes):
+    grid_h, grid_w = grid_shape  # HW(c) mode here
+    img_h, img_w = img_shape  # HW(c) mode here
+    # print(f"Creating label grid of shape {grid_shape} for image shape {img_shape} with {num_classes} classes")
+    label = np.zeros((grid_h, grid_w, num_classes + 1))
+    label[..., 0] = 1.0
+    classSums = np.zeros((num_classes + 1))  # For debugging
     cell_h = img_h / grid_h
     cell_w = img_w / grid_w
     cell_area = cell_h * cell_w
     for (bbox, cls) in zip(bboxes, labels):
+        if cls >= NUM_TYPES:
+            raise ValueError(f"Class index {cls} exceeds number of objects {NUM_TYPES}.")
         x1, y1, x2, y2 = bbox
         cx = (x1 + x2) / 2
         cy = (y1 + y2) / 2
         gx = int(cx / cell_w)
         gy = int(cy / cell_h)
-        bbox_area = (x2 - x1) * (y2 - y1)
-        bbox_size = 1 if bbox_area < cell_area * 2.5 else 2 if bbox_area < 6 * cell_area else 3
+        size = NUM_SIZES # init with max
+        if NUM_SIZES > 0:
+            # Calculate size based on bbox area
+            bbox_area = (x2 - x1) * (y2 - y1)
+            for s in range(NUM_SIZES):
+                if bbox_area < (cell_area * OBJ_SIZES[s]):
+                    size = s
+                    break
         if 0 <= gx < grid_w and 0 <= gy < grid_h:
-            if include_empty:
-                label[gy, gx, 0] = 0
-                label[gy, gx, cls + (bbox_size - 1) * num_classes // NUM_SIZES + 1] = 1
-            else:
-                label[gy, gx, cls + (bbox_size - 1) * num_classes // NUM_SIZES] = 1
-    return label
+            emptyOffs = 1
+            #print(f"Assigning class {cls  + (size * NUM_TYPES) + emptyOffs} of size {size} to grid cell ({gy}, {gx})")
+            label[gy, gx, cls + (size * NUM_TYPES) + emptyOffs] = 1.0
+            label[gy, gx, 0] = 0
+            classSums[cls + (size * NUM_TYPES) + emptyOffs] += 1.0
+    return label, classSums
 
 def data_generator(label_dir):
     files = [os.path.join(label_dir, f) for f in os.listdir(label_dir) if f.endswith("labels.json")]
     for json_path in files:
         img, bboxes, labels = load_sample(json_path)
-        label_grid = make_label_grid(bboxes, labels, INPUT_SHAPE[:2], OUTPUT_GRID, NUM_CLASSES, INCLUDE_EMPTY)
+        label_grid,class_sums = make_label_grid(bboxes, labels, INPUT_SHAPE[:2], OUTPUT_GRID, NUM_CLASSES)
+        #print(f"Loaded {json_path} with {len(bboxes)} bboxes, class sums: {class_sums}")
         yield img, label_grid
 
 def get_tf_dataset(label_dir):
@@ -117,38 +129,41 @@ def get_tf_dataset(label_dir):
     return ds.batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
 
 
-def build_mobilenetv2_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alpha=ALPHA, include_empty=INCLUDE_EMPTY):
+def build_mobilenetv2_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alpha=ALPHA):
+    class_channels = num_classes + 1
     input_layer = tf.keras.Input(shape=input_shape)
     base = tf.keras.applications.MobileNetV2(input_shape=input_shape, include_top=False, alpha=alpha, weights=None, input_tensor=input_layer)
     x = base.get_layer("block_13_expand_relu").output
 
-
     # Dropout after feature extraction
-    x = tf.keras.layers.Dropout(.3, name="dropout_features")(x)
+    x = tf.keras.layers.Dropout(.2, name="dropout_features")(x)
 
     # Optional conv + activation
     if FINAL_CONV_SIZE == 1:
-        x = tf.keras.layers.Conv2D(FINAL_CONV_CHANNELS, kernel_size=FINAL_CONV_SIZE, use_bias=False)(x)
+        x = tf.keras.layers.Conv2D(64, kernel_size=1, use_bias=False)(x)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.ReLU(max_value=6)(x)
     else:
-        x = tf.keras.layers.Conv2D(FINAL_CONV_CHANNELS, kernel_size=FINAL_CONV_SIZE, padding='same', dilation_rate=2)(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.ReLU(max_value=6)(x)
+        x = tf.keras.layers.Conv2D(128, kernel_size=FINAL_CONV_SIZE, padding='same', dilation_rate=2)(x)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.ReLU(max_value=6)(x)
 
     # Another dropout before final classifier head
-    x = tf.keras.layers.Dropout(.3, name="dropout_classhead")(x)
+    x = tf.keras.layers.Dropout(.2, name="dropout_classhead")(x)
 
-    class_channels = num_classes + 1 if include_empty else num_classes
-    class_out = tf.keras.layers.Conv2D(class_channels, kernel_size=1, activation="sigmoid" if include_empty else "softmax", name="class_output")(x)
+    class_out = tf.keras.layers.Conv2D(class_channels, kernel_size=1, activation="sigmoid", name="class_output")(x)
     return tf.keras.Model(inputs=input_layer, outputs=class_out)
 
 # Prepare and train the model
-train_ds = get_tf_dataset(LABEL_DIR)
+full_ds = get_tf_dataset(LABEL_DIR)
+train_size = int(0.8 * len(list(full_ds)))
+train_ds = full_ds.take(train_size)
+val_ds = full_ds.skip(train_size)
 
 if args.convert == False:
-    val_ds = get_tf_dataset(LABEL_DIR)
 
     model = build_mobilenetv2_fomo()
-    model.compile(optimizer=Adam(1e-4), loss="categorical_crossentropy", metrics=["accuracy"])
+    model.compile(optimizer=Adam(1e-3), loss="categorical_crossentropy", metrics=["accuracy"])
     model.fit(train_ds, validation_data=val_ds, epochs=EPOCHS, callbacks=[checkpoint_cb,earlystop_cb])
 
     model_path = f"final_{args.model}.keras"
