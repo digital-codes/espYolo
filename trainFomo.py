@@ -189,7 +189,7 @@ def build_custom_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alpha=AL
     class_channels = num_classes + 1
     inputs = tf.keras.Input(shape=input_shape)
     x = inputs
-    filterSizes = [64, 64, 32, class_channels]  # 128, 128]  # leave out 128, 128
+    filterSizes = [16, 16, 32, class_channels]  # 128, 128]  # leave out 128, 128
     for f, filters in enumerate(filterSizes):
         x = tf.keras.layers.Conv2D(filters, 3, padding="same", activation="relu")(x)
         x = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2)(x)
