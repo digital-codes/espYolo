@@ -15,7 +15,7 @@ OBJ_SIZES = fomo.OBJ_SIZES
 NUM_SIZES = len(OBJ_SIZES)  # Number of sizes
 NUM_TYPES = fomo.NUM_TYPES
 NUM_CLASSES = NUM_TYPES * (NUM_SIZES + 1) # 5 classes, 3 sizes
-
+LEVELS = fomo.LEVELS
 
 # Argument parsing
 parser = argparse.ArgumentParser(description="Train FOMO model and export TFLite quantized model.")
@@ -33,7 +33,8 @@ args.label_dir = args.label_dir if args.label_dir else args.image_dir
 
 COLORS = 3 if args.rgb else 1  # RGB or grayscale
 INPUT_SHAPE = (240, 320, COLORS) if args.format == "qvga" else (144, 176, COLORS)  # HWC format
-OUTPUT_GRID = (INPUT_SHAPE[0]//16,INPUT_SHAPE[1]//16) # (9, 11)
+OUTPUT_GRID = (INPUT_SHAPE[0]//(2**LEVELS),INPUT_SHAPE[1]//(2**LEVELS)) # (9, 11)
+print(f"Input shape: {INPUT_SHAPE}, Output grid: {OUTPUT_GRID}, Colors: {COLORS}")
 FINAL_CONV_SIZE = 3 if args.format != "qcif" else 1 
 BATCH_SIZE = args.batch_size
 
@@ -158,7 +159,10 @@ def build_mobilenetv2_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alp
     class_channels = num_classes + 1
     input_layer = tf.keras.Input(shape=input_shape)
     base = tf.keras.applications.MobileNetV2(input_shape=input_shape, include_top=False, alpha=alpha, weights=None, input_tensor=input_layer)
-    x = base.get_layer("block_13_expand_relu").output
+    if LEVELS == 5:
+        x = base.output
+    else:
+        x = base.get_layer("block_13_expand_relu").output
     print(f"Base layer output shape: {x.shape}")
 
     # Dropout after feature extraction
@@ -189,7 +193,10 @@ def build_custom_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alpha=AL
     class_channels = num_classes + 1
     inputs = tf.keras.Input(shape=input_shape)
     x = inputs
-    filterSizes = [16, 16, 32, class_channels]  # 128, 128]  # leave out 128, 128
+    if LEVELS == 5:
+        filterSizes = [16,32, 64, 128, class_channels]  # 128, 128]  # leave out 128, 128
+    else:
+        filterSizes = [16, 32, 64, class_channels]
     for f, filters in enumerate(filterSizes):
         x = tf.keras.layers.Conv2D(filters, 3, padding="same", activation="relu")(x)
         x = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2)(x)
