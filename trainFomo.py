@@ -207,9 +207,7 @@ def build_custom_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alpha=AL
     # Print layer size for debugging
     x = tf.keras.layers.Flatten()(x)
     print(f"Layer output shape: {x.shape}")
-
     # x = tf.keras.layers.Dense(filterSizes[-1], activation="relu")(x)
-
     #x = tf.keras.layers.Dense(OUTPUT_GRID[0] * OUTPUT_GRID[1] * class_channels, activation="sigmoid", name="class_output")(x)
     x = tf.keras.layers.Reshape((OUTPUT_GRID[0], OUTPUT_GRID[1], class_channels))(x)
     outputs = tf.keras.layers.Conv2D(class_channels, kernel_size=1, activation="sigmoid", name="class_output")(x)
