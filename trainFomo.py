@@ -6,8 +6,9 @@ import tensorflow as tf
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow.keras.losses import BinaryCrossentropy
-
 import argparse 
+from PIL import Image
+
 
 # Constants
 import fomodefs as fomo
@@ -87,15 +88,61 @@ def make_weighted_bce_loss(class_weights):
 
 weighted_loss = make_weighted_bce_loss([0.01] + [1.0] * NUM_CLASSES)  # downweight 'empty'
 
+# yuv stuff
+def rgb_to_yuv422(image):
+    """
+    Convert RGB image tensor [H, W, 3] to YUV422 format [H, W*2]
+    using YUYV packing (Y0 U Y1 V).
+    """
+    R = tf.cast(image[:, :, 0], tf.float32)
+    G = tf.cast(image[:, :, 1], tf.float32)
+    B = tf.cast(image[:, :, 2], tf.float32)
+
+    Y = 0.299 * R + 0.587 * G + 0.114 * B
+    U = -0.169 * R - 0.331 * G + 0.5 * B + 128.0
+    V = 0.5 * R - 0.419 * G - 0.081 * B + 128.0
+
+    Y = tf.clip_by_value(Y, 0.0, 255.0)
+    U = tf.clip_by_value(U, 0.0, 255.0)
+    V = tf.clip_by_value(V, 0.0, 255.0)
+
+    Y = tf.cast(Y, tf.uint8)
+    U = tf.cast(U, tf.uint8)
+    V = tf.cast(V, tf.uint8)
+
+    # Interleave as YUYV (per 2 pixels)
+    height, width = tf.shape(image)[0], tf.shape(image)[1]
+    assert_op = tf.debugging.assert_equal(width % 2, 0, message="Width must be even for YUV422")
+
+    with tf.control_dependencies([assert_op]):
+        Y0 = Y[:, 0::2]
+        Y1 = Y[:, 1::2]
+        U_pair = (U[:, 0::2] + U[:, 1::2]) // 2
+        V_pair = (V[:, 0::2] + V[:, 1::2]) // 2
+
+        # Stack and interleave: [Y0, U, Y1, V]
+        yuyv = tf.stack([Y0, U_pair, Y1, V_pair], axis=-1)
+        yuyv = tf.reshape(yuyv, (height, width * 2))
+
+    yuyv = tf.expand_dims(yuyv, axis=-1)  # shape becomes [240, 640, 1]
+    return yuyv
+
 
 # Re-define helper functions
 def load_sample(json_path):
+    global COLORS, INPUT_SHAPE
     with open(json_path, "r") as f:
         data = json.load(f)
     img_path = os.path.join(IMAGE_DIR, data["img"])
     img = tf.io.read_file(img_path)
-    img = tf.image.decode_png(img, channels=COLORS)
-    img = tf.image.resize(img, (INPUT_SHAPE[0], INPUT_SHAPE[1]))
+    if args.type.endswith("_yuv"):
+        img = tf.image.decode_png(img, channels=3)  # Decode as RGB
+        #print(f"Initial image shape: {img.shape}")
+        img = rgb_to_yuv422(img)
+        #print(f"Final image shape: {img.shape}")
+        img = tf.image.resize(img, (INPUT_SHAPE[0], INPUT_SHAPE[1]*2))
+    else:        
+        img = tf.image.resize(img, (INPUT_SHAPE[0], INPUT_SHAPE[1]))
     img = tf.cast(img, tf.float32) / 255.0
 
     bboxes = data["bboxes"]
@@ -152,11 +199,13 @@ def data_generator(files):
         #print(list(label_grid))
         yield img, label_grid
 
-def get_tf_dataset(files):
+def get_tf_dataset(files,yuv=False):
+    columns = INPUT_SHAPE[1] if not yuv else INPUT_SHAPE[1] * 2
+    colors = COLORS if not yuv else 1  # YUV422 has only one channel
     ds = tf.data.Dataset.from_generator(
         lambda: data_generator(files),
         output_signature=(
-            tf.TensorSpec(shape=INPUT_SHAPE, dtype=tf.float32),
+            tf.TensorSpec(shape=(INPUT_SHAPE[0],columns,colors), dtype=tf.float32),
             tf.TensorSpec(shape=(OUTPUT_GRID[0], OUTPUT_GRID[1], NUM_CLASSES + 1), dtype=tf.float32)
         )
     )
@@ -186,8 +235,8 @@ def build_mobilenetv2_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alp
     print(f"Output layer output shape: {class_out.shape}")
     return tf.keras.Model(inputs=input_layer, outputs=class_out)
 
-def build_custom_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alpha=ALPHA):
-    print(f"Building custom FOMO model with input shape {input_shape}, num_classes {num_classes}, alpha {alpha}")
+def build_custom_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES):
+    print(f"Building custom FOMO model with input shape {input_shape}, num_classes {num_classes}")
     class_channels = num_classes + 1
     inputs = tf.keras.Input(shape=input_shape)
     x = inputs
@@ -206,6 +255,55 @@ def build_custom_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alpha=AL
     print(f"Output Layer: {outputs.shape}")
 
     return tf.keras.Model(inputs, outputs)
+
+def build_custom_fomo_yuv(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES):
+    print(f"Building custom FOMO model with input shape {input_shape}, num_classes {num_classes}")
+    class_channels = num_classes + 1
+    print("Input shape ", INPUT_SHAPE)
+    # inputs = tf.keras.Input(shape=input_shape + (1,), name="yuv422_input")
+    inputs = tf.keras.Input(shape=input_shape, name="yuv422_input")
+    print(f"Input Layer: {inputs.shape}")
+
+    # Step 1: Reshape to [H, W, 2] — group each pixel as 2 bytes
+    reshaped = tf.keras.layers.Reshape((input_shape[0], input_shape[1] // 2, 2))(inputs)
+    print(f"Reshaped Layer: {reshaped.shape}")
+
+    # Step 2: Take only the first byte (Y) from each pair: [:, :, :, 0]
+    def channel_selector_conv2d():
+        #conv = tf.keras.layers.Conv2D(1, 1, use_bias=False, trainable=False)
+        conv = tf.keras.layers.Conv2D(
+        filters=1,
+        kernel_size=(1, 1),
+        strides=1,
+        padding='valid',
+        use_bias=False,
+        trainable=False
+    )
+        conv.build((None, None, None, 2))
+        weights = tf.constant([[[[1.0], [0.0]]]], dtype=tf.float32)  # shape (1, 1, 2, 1)
+        #weights = tf.constant([[[[1.0]], [[0.0]]]])  # select channel 0
+        conv.set_weights([weights.numpy()])
+        return conv
+    x = channel_selector_conv2d()(reshaped)          # extract Y channel
+    # x = tf.keras.layers.Lambda(lambda x: x[..., 0:1])(reshaped)  # shape: [H, W, 1]
+    print(f"Y only Layer: {x.shape}")
+
+    if LEVELS == 5:
+        filterSizes = [16,32, 64, 128, 4*class_channels]  # 128, 128]  # leave out 128, 128
+    else:
+        filterSizes = [16, 32, 64, 4*class_channels]
+    for f, filters in enumerate(filterSizes):
+        x = tf.keras.layers.Conv2D(filters, 3, padding="same", activation="relu")(x)
+        x = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2)(x)
+        if f < len(filterSizes) - 1:
+            x = tf.keras.layers.Dropout(0.2)(x)
+        print(f"Layer {f}: {filters} filters, output shape: {x.shape}")
+
+    outputs = tf.keras.layers.Conv2D(class_channels, kernel_size=1, activation="sigmoid", name="class_output")(x)
+    print(f"Output Layer: {outputs.shape}")
+
+    return tf.keras.Model(inputs, outputs)
+
 
 def build_custom_fomo2(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES):
     print(f"Building custom FOMO model 2 with input shape {input_shape}, num_classes {num_classes}")
@@ -246,8 +344,8 @@ def build_custom_fomo2(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES):
 
 # Prepare and train the model
 trainFiles, valFiles = getFiles(LABEL_DIR)
-train_ds = get_tf_dataset(trainFiles)
-val_ds = get_tf_dataset(valFiles)
+train_ds = get_tf_dataset(trainFiles,yuv=True if args.type.endswith("_yuv") else False)
+val_ds = get_tf_dataset(valFiles,yuv=True if args.type.endswith("_yuv") else False)
 trainSteps = len(trainFiles) // BATCH_SIZE
 valSteps = len(valFiles) // BATCH_SIZE
 print(f"Training on {len(trainFiles)} samples, validation on {len(valFiles)} samples.")
@@ -260,6 +358,10 @@ if args.convert == False:
         model.compile(optimizer=Adam(1e-3), loss=weighted_loss, metrics=["accuracy"])
     elif args.type == "custom":
         model = build_custom_fomo()
+        #model.compile(optimizer=Adam(1e-3), loss="categorical_crossentropy", metrics=["accuracy"])
+        model.compile(optimizer=Adam(1e-3), loss=weighted_loss, metrics=["accuracy"])
+    elif args.type == "custom_yuv":
+        model = build_custom_fomo_yuv(input_shape=(INPUT_SHAPE[0], INPUT_SHAPE[1]*2, 1), num_classes=NUM_CLASSES)
         #model.compile(optimizer=Adam(1e-3), loss="categorical_crossentropy", metrics=["accuracy"])
         model.compile(optimizer=Adam(1e-3), loss=weighted_loss, metrics=["accuracy"])
     elif args.type == "custom2":
