@@ -25,6 +25,8 @@ parser.add_argument("--rgb","-r", type=bool, default=False, help="Image RGB mode
 parser.add_argument("--format","-f", type=str, default="qcif", help="Image format (qcif, qvga)")
 args = parser.parse_args()
 
+os.makedirs(args.output_dir,exist_ok=True)
+
 # Set directories
 IMAGE_DIR = args.image_dir
 COLORS = 3 if args.rgb else 1  # RGB or grayscale
