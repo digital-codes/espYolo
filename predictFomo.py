@@ -79,37 +79,6 @@ def rgb_to_yuv422(image):
     yuyv = tf.expand_dims(yuyv, axis=-1)  # shape becomes [240, 640, 1]
     return yuyv
 
-import numpy as np
-
-def yuv422_to_rgb(yuv: np.ndarray, width: int, height: int) -> np.ndarray:
-    """
-    Convert YUV422 (YUYV) buffer to RGB888 image.
-    yuv: 2D array of shape (height, width * 2), dtype=uint8
-    returns: RGB image (height, width, 3), dtype=uint8
-    """
-    assert yuv.shape == (height, width * 2)
-    rgb = np.zeros((height, width, 3), dtype=np.uint8)
-
-    for y in range(height):
-        for x in range(0, width, 2):
-            i = x * 2
-            y0 = yuv[y, i + 0].astype(np.int16)
-            u  = yuv[y, i + 1].astype(np.int16) - 128
-            y1 = yuv[y, i + 2].astype(np.int16)
-            v  = yuv[y, i + 3].astype(np.int16) - 128
-
-            def yuv_to_rgb_pixel(y_val, u, v):
-                c = y_val - 16
-                r = (298 * c + 409 * v + 128) >> 8
-                g = (298 * c - 100 * u - 208 * v + 128) >> 8
-                b = (298 * c + 516 * u + 128) >> 8
-                return np.clip([r, g, b], 0, 255)
-
-            rgb[y, x + 0] = yuv_to_rgb_pixel(y0, u, v)
-            rgb[y, x + 1] = yuv_to_rgb_pixel(y1, u, v)
-
-    return rgb
-
 
 # Re-define helper functions
 def load_sample(img_path):
@@ -121,6 +90,7 @@ def load_sample(img_path):
         #print(f"Final image shape: {img.shape}")
         img = tf.image.resize(img, (INPUT_SHAPE[0], INPUT_SHAPE[1]*2))
     else:        
+        img = tf.image.decode_png(img, channels=COLORS)  # Decode as RGB
         img = tf.image.resize(img, (INPUT_SHAPE[0], INPUT_SHAPE[1]))
     img = tf.cast(img, tf.float32) / 255.0
 
@@ -138,15 +108,6 @@ for d in dataFiles:
 for idx,img in enumerate(imgFiles[:100]):
     print("Processing image:", img)
     image = load_sample(img)
-    if args.type.endswith("_yuv"):
-        #image_ = rgb_to_yuv422(image)
-        image_ = Image.fromarray((image[..., 0] * 255).astype(np.uint8))
-    else:
-        image_ = Image.fromarray((image[..., 0] * 255).astype(np.uint8)) if COLORS == 1 else Image.fromarray((image * 255).astype(np.uint8))
-    width = image_.width
-    height = image_.height
-    print("Img width,height:", width,height)
-    print("Img tensor shape:", image.shape)
     # Predict
     pred_vec = model.predict(image[None, ...])[0]
     pred_shape = pred_vec.shape
@@ -159,8 +120,11 @@ for idx,img in enumerate(imgFiles[:100]):
     save_path = os.path.join(args.output_dir, f"predvec_{idx:04d}.png")
     
     # Draw rectangles on the image based on predictions
-    #if args.type.endswith("_yuv"):
-    #    image_ = Image.fromarray(yuv422_to_rgb(image[..., 0].numpy(), width, height)) 
+    image_ = Image.open(img).convert("RGB" if COLORS == 3 else "L")
+    width = image_.width
+    height = image_.height
+    print("Img width,height:", width,height)
+    print("Img tensor shape:", image.shape)
     draw = ImageDraw.Draw(image_)
     #image_.show()
     detected = False
