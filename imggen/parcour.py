@@ -790,8 +790,8 @@ frames = int(duration * fps)
 
 randomScene = True
 
-img_width = 176 # 320 #176 # 600
-img_height = 144 # 240 # 144 # 450
+img_width = 320 #176 # 600
+img_height = 240 # 144 # 450
 
 unique_classes = {obj["class"] for obj in object_coords}
 class_map = {key: idx for idx, key in enumerate(unique_classes) }

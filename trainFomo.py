@@ -33,7 +33,7 @@ args.label_dir = args.label_dir if args.label_dir else args.image_dir
 
 COLORS = 3 if args.rgb else 1  # RGB or grayscale
 INPUT_SHAPE = (240, 320, COLORS) if args.format == "qvga" else (144, 176, COLORS)  # HWC format
-OUTPUT_GRID = (round(INPUT_SHAPE[0]/(2**LEVELS)),round(INPUT_SHAPE[1]/(2**LEVELS))) 
+OUTPUT_GRID = (int(INPUT_SHAPE[0]/(2**LEVELS)),int(INPUT_SHAPE[1]/(2**LEVELS))) 
 print(f"Input shape: {INPUT_SHAPE}, Output grid: {OUTPUT_GRID}, Colors: {COLORS}")
 FINAL_CONV_SIZE = 3 if args.format != "qcif" else 1 
 BATCH_SIZE = args.batch_size
@@ -59,7 +59,7 @@ checkpoint_cb = ModelCheckpoint(
 # Stop training early if val_loss doesn't improve for 5 epochs
 earlystop_cb = EarlyStopping(
     monitor="val_loss",
-    patience=20,         # number of epochs with no improvement before stopping
+    patience=10,         # number of epochs with no improvement before stopping
     restore_best_weights=True,
     verbose=1
 )
@@ -166,7 +166,7 @@ def build_mobilenetv2_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alp
     print(f"Base layer output shape: {x.shape}")
 
     # Dropout after feature extraction
-    x = tf.keras.layers.Dropout(.3, name="dropout_features")(x)
+    x = tf.keras.layers.Dropout(.2, name="dropout_features")(x)
 
     if False:
         # Optional conv + activation
@@ -194,9 +194,9 @@ def build_custom_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alpha=AL
     inputs = tf.keras.Input(shape=input_shape)
     x = inputs
     if LEVELS == 5:
-        filterSizes = [16,32, 64, 128, class_channels]  # 128, 128]  # leave out 128, 128
+        filterSizes = [16,32, 64, 128, 4*class_channels]  # 128, 128]  # leave out 128, 128
     else:
-        filterSizes = [16, 32, 64, class_channels]
+        filterSizes = [16, 32, 64, 4*class_channels]
     for f, filters in enumerate(filterSizes):
         x = tf.keras.layers.Conv2D(filters, 3, padding="same", activation="relu")(x)
         x = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2)(x)
@@ -205,14 +205,12 @@ def build_custom_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alpha=AL
         print(f"Layer {f}: {filters} filters, output shape: {x.shape}")
 
     # Print layer size for debugging
-    x = tf.keras.layers.Flatten()(x)
-    print(f"Layer output shape: {x.shape}")
-    # x = tf.keras.layers.Dense(filterSizes[-1], activation="relu")(x)
-    #x = tf.keras.layers.Dense(OUTPUT_GRID[0] * OUTPUT_GRID[1] * class_channels, activation="sigmoid", name="class_output")(x)
-    x = tf.keras.layers.Reshape((OUTPUT_GRID[0], OUTPUT_GRID[1], class_channels))(x)
-    outputs = tf.keras.layers.Conv2D(class_channels, kernel_size=1, activation="sigmoid", name="class_output")(x)
+    #x = tf.keras.layers.Flatten()(x)
+    #print(f"Layer output shape: {x.shape}")
+    #x = tf.keras.layers.Reshape((OUTPUT_GRID[0], OUTPUT_GRID[1], class_channels))(x)
 
-    #outputs = tf.keras.layers.Dense(class_channels, activation="sigmoid")(x)
+    outputs = tf.keras.layers.Conv2D(class_channels, kernel_size=1, activation="sigmoid", name="class_output")(x)
+    print(f"Output Layer: {outputs.shape}")
 
     return tf.keras.Model(inputs, outputs)
 
@@ -225,7 +223,8 @@ def build_custom_fomo2(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES):
     for f in range(LEVELS):
         fexSizes.append(2**(4+f))
     for f, filters in enumerate(fexSizes):
-        x = tf.keras.layers.Conv2D(filters, 3, strides=2, padding="same", activation="relu")(x)
+        x = tf.keras.layers.Conv2D(filters, 3, padding="same", activation="relu")(x)
+        x = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2)(x)
         print(f"FEX Layer {f}: {filters} filters, output shape: {x.shape}")
 
     x = tf.keras.layers.Dropout(0.2)(x) 
@@ -261,8 +260,8 @@ val_ds = full_ds.skip(train_size)
 if args.convert == False:
 
     #model = build_mobilenetv2_fomo()
-    #model = build_custom_fomo()
-    model = build_custom_fomo2()
+    model = build_custom_fomo()
+    #model = build_custom_fomo2()
     #model.compile(optimizer=Adam(1e-3), loss="categorical_crossentropy", metrics=["accuracy"])
     model.compile(optimizer=Adam(1e-3), loss=weighted_loss, metrics=["accuracy"])
     model.fit(train_ds, validation_data=val_ds, epochs=EPOCHS, callbacks=[checkpoint_cb,earlystop_cb])
