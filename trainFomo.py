@@ -28,12 +28,16 @@ parser.add_argument("--epochs","-e", type=int, default=30, help="Epochs (default
 parser.add_argument("--format","-f", type=str, default="qcif", help="Image format (qcif, qvga)")
 parser.add_argument("--rgb","-r", type=bool, default=False, help="Image RGB mode")
 parser.add_argument("--batch_size","-b", type=int, default=4, help="Batch size")
+parser.add_argument("--type","-t", type=str, default="custom", help="Model format")
 args = parser.parse_args()
 args.label_dir = args.label_dir if args.label_dir else args.image_dir
 
 COLORS = 3 if args.rgb else 1  # RGB or grayscale
 INPUT_SHAPE = (240, 320, COLORS) if args.format == "qvga" else (144, 176, COLORS)  # HWC format
-OUTPUT_GRID = (int(INPUT_SHAPE[0]/(2**LEVELS)),int(INPUT_SHAPE[1]/(2**LEVELS))) 
+if args.type == "mobilenet":
+    OUTPUT_GRID = (round(INPUT_SHAPE[0]/(2**LEVELS)),round(INPUT_SHAPE[1]/(2**LEVELS))) 
+else:
+    OUTPUT_GRID = (int(INPUT_SHAPE[0]/(2**LEVELS)),int(INPUT_SHAPE[1]/(2**LEVELS))) 
 print(f"Input shape: {INPUT_SHAPE}, Output grid: {OUTPUT_GRID}, Colors: {COLORS}")
 FINAL_CONV_SIZE = 3 if args.format != "qcif" else 1 
 BATCH_SIZE = args.batch_size
@@ -134,8 +138,13 @@ def make_label_grid(bboxes, labels, img_shape, grid_shape, num_classes):
             classSums[cls + (size * NUM_TYPES) + emptyOffs] += 1.0
     return label, classSums
 
-def data_generator(label_dir):
+def getFiles(label_dir):
     files = [os.path.join(label_dir, f) for f in os.listdir(label_dir) if f.endswith("labels.json")]
+    files = sorted(files)
+    trainFiles = int(len(files) * 0.8)
+    return files[:trainFiles],files[trainFiles:]
+
+def data_generator(files):
     for json_path in files:
         img, bboxes, labels = load_sample(json_path)
         label_grid,class_sums = make_label_grid(bboxes, labels, INPUT_SHAPE[:2], OUTPUT_GRID, NUM_CLASSES)
@@ -143,15 +152,15 @@ def data_generator(label_dir):
         #print(list(label_grid))
         yield img, label_grid
 
-def get_tf_dataset(label_dir):
+def get_tf_dataset(files):
     ds = tf.data.Dataset.from_generator(
-        lambda: data_generator(label_dir),
+        lambda: data_generator(files),
         output_signature=(
             tf.TensorSpec(shape=INPUT_SHAPE, dtype=tf.float32),
             tf.TensorSpec(shape=(OUTPUT_GRID[0], OUTPUT_GRID[1], NUM_CLASSES + 1), dtype=tf.float32)
         )
     )
-    return ds.batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
+    return ds.batch(BATCH_SIZE).repeat().prefetch(tf.data.AUTOTUNE)
 
 
 def build_mobilenetv2_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alpha=ALPHA):
@@ -168,20 +177,9 @@ def build_mobilenetv2_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alp
     # Dropout after feature extraction
     x = tf.keras.layers.Dropout(.2, name="dropout_features")(x)
 
-    if False:
-        # Optional conv + activation
-        if FINAL_CONV_SIZE == 1:
-            x = tf.keras.layers.Conv2D(OUTPUT_GRID[0] * OUTPUT_GRID[1] * class_channels, kernel_size=1, use_bias=False)(x)
-            x = tf.keras.layers.BatchNormalization()(x)
-            #x = tf.keras.layers.ReLU(max_value=6)(x)
-            x = tf.keras.layers.ReLU()(x)
-        else:
-            x = tf.keras.layers.Conv2D(128, kernel_size=FINAL_CONV_SIZE, padding='same', dilation_rate=2)(x)
-            x = tf.keras.layers.BatchNormalization()(x)
-            x = tf.keras.layers.ReLU(max_value=6)(x)
-
-        # Another dropout before final classifier head
-        x = tf.keras.layers.Dropout(.2, name="dropout_classhead")(x)
+    x = tf.keras.layers.Conv2D(128, kernel_size=3, padding='same', dilation_rate=2)(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.ReLU(max_value=6)(x)
 
     print(f"Layer output shape: {x.shape}")
     class_out = tf.keras.layers.Conv2D(class_channels, kernel_size=1, activation="sigmoid", name="class_output")(x)
@@ -203,11 +201,6 @@ def build_custom_fomo(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES, alpha=AL
         if f < len(filterSizes) - 1:
             x = tf.keras.layers.Dropout(0.2)(x)
         print(f"Layer {f}: {filters} filters, output shape: {x.shape}")
-
-    # Print layer size for debugging
-    #x = tf.keras.layers.Flatten()(x)
-    #print(f"Layer output shape: {x.shape}")
-    #x = tf.keras.layers.Reshape((OUTPUT_GRID[0], OUTPUT_GRID[1], class_channels))(x)
 
     outputs = tf.keras.layers.Conv2D(class_channels, kernel_size=1, activation="sigmoid", name="class_output")(x)
     print(f"Output Layer: {outputs.shape}")
@@ -252,19 +245,37 @@ def build_custom_fomo2(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES):
     
 
 # Prepare and train the model
-full_ds = get_tf_dataset(LABEL_DIR)
-train_size = int(0.8 * len(list(full_ds)))
-train_ds = full_ds.take(train_size)
-val_ds = full_ds.skip(train_size)
+trainFiles, valFiles = getFiles(LABEL_DIR)
+train_ds = get_tf_dataset(trainFiles)
+val_ds = get_tf_dataset(valFiles)
+trainSteps = len(trainFiles) // BATCH_SIZE
+valSteps = len(valFiles) // BATCH_SIZE
+print(f"Training on {len(trainFiles)} samples, validation on {len(valFiles)} samples.")
+print("Val files from: ", valFiles[0])
 
 if args.convert == False:
 
-    #model = build_mobilenetv2_fomo()
-    model = build_custom_fomo()
-    #model = build_custom_fomo2()
+    if args.type == "mobilenet":
+        model = build_mobilenetv2_fomo()
+        model.compile(optimizer=Adam(1e-3), loss=weighted_loss, metrics=["accuracy"])
+    elif args.type == "custom":
+        model = build_custom_fomo()
+        #model.compile(optimizer=Adam(1e-3), loss="categorical_crossentropy", metrics=["accuracy"])
+        model.compile(optimizer=Adam(1e-3), loss=weighted_loss, metrics=["accuracy"])
+    elif args.type == "custom2":
+        model = build_custom_fomo2()
+        #model.compile(optimizer=Adam(1e-3), loss="categorical_crossentropy", metrics=["accuracy"])
+        model.compile(optimizer=Adam(1e-3), loss=weighted_loss, metrics=["accuracy"])
+    else:
+        raise ValueError(f"Unknown model type: {args.type}")
     #model.compile(optimizer=Adam(1e-3), loss="categorical_crossentropy", metrics=["accuracy"])
-    model.compile(optimizer=Adam(1e-3), loss=weighted_loss, metrics=["accuracy"])
-    model.fit(train_ds, validation_data=val_ds, epochs=EPOCHS, callbacks=[checkpoint_cb,earlystop_cb])
+    #model.compile(optimizer=Adam(1e-3), loss=weighted_loss, metrics=["accuracy"])
+
+    model.fit(train_ds, validation_data=val_ds, 
+            epochs=EPOCHS, 
+            steps_per_epoch=trainSteps,
+            validation_steps=valSteps,
+            callbacks=[checkpoint_cb,earlystop_cb])
 
     model_path = f"final_{args.model}.keras"
     model.save(model_path)
