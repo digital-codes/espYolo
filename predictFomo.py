@@ -15,6 +15,8 @@ NUM_TYPES = fomo.NUM_TYPES
 NUM_CLASSES = NUM_TYPES * (NUM_SIZES + 1) # 5 classes, 3 sizes
 
 
+# like 
+# python predictFomo.py -i imggen/output_frames_qcif/ -m fomo_qcif_c2 -o verify_qcif_c2 -f qcif -t custom_yuv -r True
 
 # Argument parsing
 parser = argparse.ArgumentParser(description="Train FOMO model and export TFLite quantized model.")
@@ -108,16 +110,19 @@ for d in dataFiles:
 for idx,img in enumerate(imgFiles[:100]):
     print("Processing image:", img)
     image = load_sample(img)
+    # get file name from path
+    img_name = os.path.basename(img)
+    img_name = os.path.splitext(img_name)[0]
     # Predict
     pred_vec = model.predict(image[None, ...])[0]
     pred_shape = pred_vec.shape
     print("Pred shape:", pred_shape)
     print("Total activation sum:", np.sum(pred_vec))
     
-    save_path = os.path.join(args.output_dir, f"predvec_{idx:04d}.json")
+    save_path = os.path.join(args.output_dir, f"vector_{img_name}.json")
     with open(save_path, "w") as f:
         json.dump(pred_vec.tolist(), f)
-    save_path = os.path.join(args.output_dir, f"predvec_{idx:04d}.png")
+    save_path = os.path.join(args.output_dir, f"prediction_{img_name}.png")
     
     # Draw rectangles on the image based on predictions
     image_ = Image.open(img).convert("RGB" if COLORS == 3 else "L")
